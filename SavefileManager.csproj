@@ -9,7 +9,12 @@
     <AssemblyName>SavefileManager</AssemblyName>
     <RootNamespace>SavefileManager</RootNamespace>
     <Version>1.0.0</Version>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>Savefile Manager</Product>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
 
 </Project>

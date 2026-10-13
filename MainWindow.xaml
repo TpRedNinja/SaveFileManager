@@ -1,6 +1,7 @@
 <Window x:Class="SavefileManager.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Icon="Assets/app.ico"
         xmlns:models="clr-namespace:SavefileManager.Models"
         Title="Savefile Manager" Width="780" Height="580" MinWidth="600" MinHeight="440"
         Background="{DynamicResource WindowBackgroundBrush}"
