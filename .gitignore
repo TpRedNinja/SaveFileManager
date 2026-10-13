@@ -1,0 +1,44 @@
+# Visual Studio / .NET
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+*.log
+*.tmp
+*.rsuser
+
+# Build / publish output
+publish/
+PublishProfiles/
+*.nupkg
+*.snupkg
+artifacts/
+TestResults/
+*.VisualState.xml
+
+# Tools
+.vscode/
+.idea/
+_ReSharper*/
+*.DotSettings.user
+*.pdb
+*.dbmdl
+
+# Personal data created by the app when run from the project folder
+# (settings, backups, copied fonts and images, log)
+config/
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
