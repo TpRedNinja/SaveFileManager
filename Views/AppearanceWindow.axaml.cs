@@ -14,7 +14,7 @@ public partial class AppearanceWindow : Window
 {
     private readonly AppearanceSettings _original = new();
     private readonly AppearanceSettings _work = new();
-    private readonly Dictionary<string, ComboBox> _elementCombos = new();
+    private readonly Dictionary<string, ComboBox> _elementCombos = [];
     private bool _loading = true;
     private bool _closingHandled;
 
@@ -125,7 +125,7 @@ public partial class AppearanceWindow : Window
     private async void AddFont_Click(object? sender, RoutedEventArgs e)
     {
         var files = await Pickers.OpenFiles(this, "Choose font file(s)", "Font files",
-            new[] { "*.ttf", "*.otf", "*.ttc", "*.TTF", "*.OTF", "*.TTC" }, true);
+            ["*.ttf", "*.otf", "*.ttc", "*.TTF", "*.OTF", "*.TTC"], true);
         if (files.Count == 0) return;
 
         string? last = null;
@@ -177,13 +177,18 @@ public partial class AppearanceWindow : Window
         buttons.Children.Add(label);
         box.Children.Add(buttons);
 
-        var opacityRow = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
-        opacityRow.Children.Add(new TextBlock { Text = "Opacity:", Width = 70, VerticalAlignment = VerticalAlignment.Center });
-        var pct = new TextBlock { Width = 44, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-        DockPanel.SetDock(pct, Dock.Right);
-        var slider = new Slider { Minimum = 0.05, Maximum = 1, Value = slot.Opacity, VerticalAlignment = VerticalAlignment.Center };
-        opacityRow.Children.Add(pct);
+        var opacityRow = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+        opacityRow.ColumnDefinitions.Add(new ColumnDefinition(70, GridUnitType.Pixel));
+        opacityRow.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+        opacityRow.ColumnDefinitions.Add(new ColumnDefinition(72, GridUnitType.Pixel));
+        var opLabel = new TextBlock { Text = "Opacity:", VerticalAlignment = VerticalAlignment.Center };
+        var slider = new Slider { Minimum = 0.05, Maximum = 1, Value = slot.Opacity, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+        var pct = new TextBlock { TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+        Grid.SetColumn(slider, 1);
+        Grid.SetColumn(pct, 2);
+        opacityRow.Children.Add(opLabel);
         opacityRow.Children.Add(slider);
+        opacityRow.Children.Add(pct);
         box.Children.Add(opacityRow);
 
         var fitRow = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };

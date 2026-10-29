@@ -31,13 +31,13 @@ public static class Pickers
         {
             Title = title,
             AllowMultiple = multiple,
-            FileTypeFilter = new[]
-            {
+            FileTypeFilter =
+            [
                 new FilePickerFileType(typeName) { Patterns = patterns },
                 FilePickerFileTypes.All
-            }
+            ]
         });
-        return result.Select(f => f.TryGetLocalPath()).Where(p => p != null).Select(p => p!).ToList();
+        return [.. result.Select(f => f.TryGetLocalPath()).Where(p => p != null).Select(p => p!)];
     }
 
     public static async Task<string?> OpenFile(Window owner, string title, string typeName, IReadOnlyList<string> patterns)
@@ -56,7 +56,7 @@ public static class Pickers
         {
             Title = title,
             SuggestedFileName = suggestedName,
-            FileTypeChoices = new[] { new FilePickerFileType(typeName) { Patterns = patterns } }
+            FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = patterns }]
         });
         return file?.TryGetLocalPath();
     }

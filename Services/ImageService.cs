@@ -10,13 +10,13 @@ public static class ImageService
 {
     /// <summary>File patterns for the open-file dialog.</summary>
     public static readonly string[] Patterns =
-    {
+    [
         "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.ico", "*.tif", "*.tiff", "*.webp",
         "*.PNG", "*.JPG", "*.JPEG", "*.BMP", "*.GIF", "*.ICO", "*.TIF", "*.TIFF", "*.WEBP",
-    };
+    ];
 
     private static string _dir = "";
-    private static readonly Dictionary<string, Bitmap> Cache = new();
+    private static readonly Dictionary<string, Bitmap> Cache = [];
 
     public static void Init(string configDir)
     {
@@ -48,9 +48,7 @@ public static class ImageService
     /// <summary>Copies the picture into config/images/&lt;subfolder&gt; and returns its relative name.</summary>
     public static string ImportImage(string sourcePath, string subfolder)
     {
-        var probe = Decode(sourcePath, 64);
-        if (probe == null)
-            throw new InvalidDataException("That file isn't a picture this program can read (png, jpg, bmp, gif, ico, tiff or webp).");
+        var probe = Decode(sourcePath, 64) ?? throw new InvalidDataException("That file isn't a picture this program can read (png, jpg, bmp, gif, ico, tiff or webp).");
         probe.Dispose();
 
         var dir = Path.Combine(_dir, subfolder);

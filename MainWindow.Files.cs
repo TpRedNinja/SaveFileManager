@@ -130,7 +130,7 @@ public partial class MainWindow
             {
                 var val = _current.FileIcons[k];
                 _current.FileIcons.Remove(k);
-                _current.FileIcons[newKey + k.Substring(oldKey.Length)] = val;
+                _current.FileIcons[string.Concat(newKey, k.AsSpan(oldKey.Length))] = val;
                 changed = true;
             }
         }

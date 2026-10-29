@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -6,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using SavefileManager.Helpers;
 using SavefileManager.Models;
+using SavefileManager.Themes;
 
 namespace SavefileManager.Services;
 
@@ -35,7 +37,7 @@ public static class ThemeManager
 
     // Fluent resource key -> our theme key.
     private static readonly (string Fluent, string Ours)[] FluentMap =
-    {
+    [
         // Button
         ("ButtonBackground", "ButtonBackground"), ("ButtonBackgroundPointerOver", "ButtonHoverBackground"),
         ("ButtonBackgroundPressed", "ButtonPressedBackground"), ("ButtonBackgroundDisabled", "ButtonDisabledBackground"),
@@ -130,7 +132,7 @@ public static class ThemeManager
         ("RadioButtonOuterEllipseCheckedFillPressed", "InputBackground"),
         ("RadioButtonCheckGlyphFill", "Accent"), ("RadioButtonCheckGlyphFillPointerOver", "Accent"),
         ("RadioButtonCheckGlyphFillPressed", "Accent"),
-    };
+    ];
 
     public static void Apply(ThemeDefinition def)
     {
@@ -145,9 +147,11 @@ public static class ThemeManager
 
         // Light themes (Classic) use Fluent's light base, dark themes its dark base, so anything we
         // don't style explicitly still looks right.
-        app.RequestedThemeVariant = ColorUtil.Luminance(def.Get("WindowBackground")) < 0.5
+        var variant = ColorUtil.Luminance(def.Get("WindowBackground")) < 0.5
             ? ThemeVariant.Dark
             : ThemeVariant.Light;
+        if (app.RequestedThemeVariant != variant)   // switching variant restyles everything: only when needed
+            app.RequestedThemeVariant = variant;
 
         Current = def;
 
@@ -168,6 +172,8 @@ public static class ThemeManager
     private const int DWMWA_CAPTION_COLOR = 35;
     private const int DWMWA_TEXT_COLOR = 36;
 
+    [SuppressMessage("remove unnessaceary suppression", "IDE0079")]
+    [SuppressMessage("Interoperability", "SYSLIB1054")]
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
@@ -186,10 +192,10 @@ public static class ThemeManager
             int cap = ColorRef(bg);
             int txt = ColorRef(Current.Get("TitleBarText"));
             int border = ColorRef(Current.Get("TitleBarBorder"));
-            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
-            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref cap, sizeof(int));
-            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref txt, sizeof(int));
-            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref border, sizeof(int));
+            _ = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+            _ = DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref cap, sizeof(int));
+            _ = DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref txt, sizeof(int));
+            _ = DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref border, sizeof(int));
         }
         catch
         {

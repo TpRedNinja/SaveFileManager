@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using SavefileManager.Helpers;
 using SavefileManager.Models;
 using SavefileManager.Services;
+using SavefileManager.Themes;
 using SavefileManager.Views;
 
 namespace SavefileManager;
@@ -19,9 +20,9 @@ public partial class MainWindow : Window
 
     private static SettingsService Store => App.Store;
 
-    private readonly ObservableCollection<ProfileItem> _profileItems = new();
-    private readonly ObservableCollection<FileNode> _personalNodes = new();
-    private readonly ObservableCollection<FileNode> _gameNodes = new();
+    private readonly ObservableCollection<ProfileItem> _profileItems = [];
+    private readonly ObservableCollection<FileNode> _personalNodes = [];
+    private readonly ObservableCollection<FileNode> _gameNodes = [];
 
     private Profile? _current;
     private bool _available;
@@ -251,7 +252,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        string Describe(string label, string? path) =>
+        static string Describe(string label, string? path) =>
             string.IsNullOrEmpty(path)
                 ? $"{label}: (not set on this PC)"
                 : Directory.Exists(path) ? $"{label}: {path}" : $"{label}: {path}   (not found)";
@@ -379,7 +380,7 @@ public partial class MainWindow : Window
     private async void ImportLegacy_Click(object? sender, RoutedEventArgs e)
     {
         var path = await Pickers.OpenFile(this, "Choose the settings.json from Green-Bat's Savefile Manager",
-            "settings.json", new[] { "*.json" });
+            "settings.json", ["*.json"]);
         if (path == null) return;
 
         LegacyImportResult result;

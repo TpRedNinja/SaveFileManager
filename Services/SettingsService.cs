@@ -1,6 +1,8 @@
 using System.IO;
 using System.Text.Json;
+using SavefileManager.Helpers;
 using SavefileManager.Models;
+using SavefileManager.Themes;
 
 namespace SavefileManager.Services;
 
@@ -44,17 +46,53 @@ public class SettingsService
         Load();
     }
 
-    // Portable like the original: config lives next to the exe. If that folder is read-only
-    // (e.g. Program Files) fall back to %AppData%.
+    // Where the config lives:
+    //  * SAVEFILE_MANAGER_CONFIG (environment variable), if you set it
+    //  * running from Visual Studio / "dotnet run" (a ...\\bin\\Debug or Release folder): your user folder
+    //    (%AppData%\\SavefileManager\\config on Windows, ~/.config/SavefileManager/config on Linux), so
+    //    cleaning or deleting bin/obj never removes your settings, pictures or backups
+    //  * a published copy: portable, in a "config" folder next to the program, like the original;
+    //    if that folder is read-only (e.g. Program Files) the user folder is used instead
     private static string ResolveConfigDir()
     {
-        var primary = Path.Combine(AppContext.BaseDirectory, "config");
-        if (CanWrite(primary)) return primary;
-        var fallback = Path.Combine(
+        var env = Environment.GetEnvironmentVariable("SAVEFILE_MANAGER_CONFIG");
+        if (!string.IsNullOrWhiteSpace(env) && CanWrite(env)) return env;
+
+        var userDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "SavefileManager", "config");
-        Directory.CreateDirectory(fallback);
-        return fallback;
+        var beside = Path.Combine(AppContext.BaseDirectory, "config");
+
+        if (IsBuildOutputFolder(AppContext.BaseDirectory))
+        {
+            // First run after switching to the user folder: bring over what is next to the build.
+            try
+            {
+                if (!File.Exists(Path.Combine(userDir, "settings.json")) &&
+                    File.Exists(Path.Combine(beside, "settings.json")))
+                {
+                    FileOps.CopyDirectory(beside, userDir, false);
+                }
+            }
+            catch { /* worst case: starts empty, the old copy is still there */ }
+            Directory.CreateDirectory(userDir);
+            return userDir;
+        }
+
+        if (CanWrite(beside)) return beside;
+        Directory.CreateDirectory(userDir);
+        return userDir;
+    }
+
+    private static bool IsBuildOutputFolder(string dir)
+    {
+        var parts = dir.Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < parts.Length - 1; i++)
+            if (parts[i].Equals("bin", StringComparison.OrdinalIgnoreCase) &&
+                (parts[i + 1].Equals("Debug", StringComparison.OrdinalIgnoreCase) ||
+                 parts[i + 1].Equals("Release", StringComparison.OrdinalIgnoreCase)))
+                return true;
+        return false;
     }
 
     private static bool CanWrite(string dir)
@@ -120,12 +158,12 @@ public class SettingsService
 
     private void Normalize()
     {
-        Data.Profiles ??= new();
-        Data.Machines ??= new();
-        Data.RemovedProfileIds ??= new();
+        Data.Profiles ??= [];
+        Data.Machines ??= [];
+        Data.RemovedProfileIds ??= [];
         Data.Appearance ??= new AppearanceSettings();
         Data.Appearance.Fonts ??= new FontSettings();
-        Data.Appearance.Fonts.Elements ??= new();
+        Data.Appearance.Fonts.Elements ??= [];
         Data.Appearance.PersonalBackground ??= new ImageSlot();
         Data.Appearance.GameBackground ??= new ImageSlot();
         Data.CustomTheme ??= BuiltInThemes.Create("Dark", "Custom");
@@ -136,8 +174,8 @@ public class SettingsService
         foreach (var p in Data.Profiles)
         {
             if (string.IsNullOrWhiteSpace(p.Id)) p.Id = Guid.NewGuid().ToString("N");
-            p.Paths ??= new();
-            p.FileIcons ??= new();
+            p.Paths ??= [];
+            p.FileIcons ??= [];
             if (string.IsNullOrWhiteSpace(p.Name)) p.Name = "Profile";
             var unique = p.Name;
             for (int i = 2; !names.Add(unique); i++) unique = $"{p.Name} ({i})";
@@ -196,17 +234,17 @@ public class SettingsService
         catch { return (false, false); }
         if (disk == null) return (false, false);
 
-        foreach (var id in disk.RemovedProfileIds ?? new())
+        foreach (var id in disk.RemovedProfileIds ?? [])
         {
             if (!Data.RemovedProfileIds.Contains(id)) Data.RemovedProfileIds.Add(id);
             if (Data.Profiles.RemoveAll(p => p.Id == id) > 0) profilesChanged = true;
         }
 
-        foreach (var dp in disk.Profiles ?? new())
+        foreach (var dp in disk.Profiles ?? [])
         {
             if (string.IsNullOrWhiteSpace(dp.Id) || Data.RemovedProfileIds.Contains(dp.Id)) continue;
-            dp.Paths ??= new();
-            dp.FileIcons ??= new();
+            dp.Paths ??= [];
+            dp.FileIcons ??= [];
             var mine = Data.Profiles.FirstOrDefault(p => p.Id == dp.Id);
             if (mine == null)
             {
@@ -244,7 +282,7 @@ public class SettingsService
             }
         }
 
-        foreach (var (machine, state) in disk.Machines ?? new())
+        foreach (var (machine, state) in disk.Machines ?? [])
             if (machine != Machine) Data.Machines[machine] = state;
 
         if (disk.ThemeUpdatedUtc > Data.ThemeUpdatedUtc)

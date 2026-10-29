@@ -18,12 +18,12 @@ public partial class ColorPickerDialog : Window
     private const double BoxW = 240, BoxH = 180;
 
     private static readonly string[] Presets =
-    {
+    [
         "#000000", "#1F1F1F", "#212020", "#2B2B2B", "#3C3C3C", "#555555", "#808080", "#ADADAD",
         "#CCCCCC", "#E1E1E1", "#F0F0F0", "#FFFFFF", "#002B36", "#073642", "#586E75", "#93A1A1",
         "#4287F5", "#0078D7", "#57B6FF", "#838AEB", "#8957FF", "#B58900", "#CB4B16", "#DC322F",
         "#D33682", "#6C71C4", "#268BD2", "#2AA198", "#859900", "#2EA043", "#FF6B6B", "#FFD43B",
-    };
+    ];
 
     private readonly Color _original;
     private double _h, _s, _v;

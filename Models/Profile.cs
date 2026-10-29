@@ -24,7 +24,7 @@ public class Profile
     /// <summary>File extension including the dot (".sgd"), or "" for any file / folders.</summary>
     public string Extension { get; set; } = "";
 
-    public Dictionary<string, FolderPair> Paths { get; set; } = new();
+    public Dictionary<string, FolderPair> Paths { get; set; } = [];
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 
     /// <summary>Optional picture shown in the profile selector (a copy kept in config/images).</summary>
@@ -34,7 +34,7 @@ public class Profile
     /// Custom pictures for files/folders. Key is "P|relative/path" (your list) or "G|relative/path"
     /// (game list), so the same icons work on every PC; value is a file in config/images.
     /// </summary>
-    public Dictionary<string, string> FileIcons { get; set; } = new();
+    public Dictionary<string, string> FileIcons { get; set; } = [];
 
     [JsonIgnore]
     public FolderPair? PathsForThisPc =>

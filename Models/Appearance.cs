@@ -14,7 +14,7 @@ public class FontSettings
     public bool PerElement { get; set; }
 
     /// <summary>Element key (see FontService.Elements) to font name.</summary>
-    public Dictionary<string, string> Elements { get; set; } = new();
+    public Dictionary<string, string> Elements { get; set; } = [];
 }
 
 /// <summary>A background picture behind one of the two file lists.</summary>

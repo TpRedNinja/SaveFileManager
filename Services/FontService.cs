@@ -14,7 +14,7 @@ public static class FontService
 {
     /// <summary>The parts of the window that can have their own font.</summary>
     public static readonly (string Key, string Label)[] Elements =
-    {
+    [
         ("General", "Everything else (dialogs, labels, text boxes)"),
         ("Title", "Title at the top"),
         ("Combo", "Profile selector"),
@@ -23,10 +23,10 @@ public static class FontService
         ("Button", "Buttons"),
         ("Menu", "Menus and right-click menus"),
         ("Tooltip", "Tooltips"),
-    };
+    ];
 
     private static readonly string[] Curated =
-    {
+    [
         "Segoe UI", "Segoe UI Variable Text", "Arial", "Calibri", "Cambria", "Candara", "Consolas",
         "Cascadia Code", "Cascadia Mono", "Comic Sans MS", "Courier New", "Franklin Gothic Medium",
         "Georgia", "Impact", "Lucida Console", "Palatino Linotype", "Segoe Print", "Segoe Script",
@@ -34,10 +34,10 @@ public static class FontService
         // common on Linux
         "Inter", "Roboto", "Noto Sans", "Ubuntu", "Cantarell", "DejaVu Sans", "DejaVu Sans Mono",
         "Liberation Sans", "Liberation Serif", "Liberation Mono",
-    };
+    ];
 
     private static string _dir = "";
-    private static readonly List<string> UserFamilies = new();
+    private static readonly List<string> UserFamilies = [];
 
     public static void Init(string fontsDirectory)
     {
@@ -86,7 +86,7 @@ public static class FontService
             File.Copy(sourcePath, dest, true);
             PlatformHelper.InstallUserFont(dest, family, UniqueName(dest));
             if (!UserFamilies.Contains(family, StringComparer.OrdinalIgnoreCase)) UserFamilies.Add(family);
-            needsRestart = !SystemFontNames().Contains(family, StringComparer.OrdinalIgnoreCase);
+            needsRestart = !SystemFontNames.Contains(family, StringComparer.OrdinalIgnoreCase);
             return family;
         }
         catch (Exception ex)
@@ -103,10 +103,13 @@ public static class FontService
         try { if (Directory.Exists(folder)) Directory.Delete(folder, true); } catch { /* ignore */ }
     }
 
-    private static IEnumerable<string> SystemFontNames()
+    private static IEnumerable<string> SystemFontNames
     {
-        try { return FontManager.Current.SystemFonts.Select(f => f.Name).ToList(); }
-        catch { return Array.Empty<string>(); }
+        get
+        {
+            try { return [.. FontManager.Current.SystemFonts.Select(f => f.Name)]; }
+            catch { return []; }
+        }
     }
 
     /// <summary>Fonts you added first, then common fonts, then everything else installed.</summary>
@@ -118,7 +121,7 @@ public static class FontService
 
         foreach (var n in UserFamilies.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)) Add(n);
 
-        var installed = new HashSet<string>(SystemFontNames(), StringComparer.OrdinalIgnoreCase);
+        var installed = new HashSet<string>(SystemFontNames, StringComparer.OrdinalIgnoreCase);
         foreach (var c in Curated) if (installed.Contains(c)) Add(c);
         foreach (var n in installed.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)) Add(n);
         return names;
