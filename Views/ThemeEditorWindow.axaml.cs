@@ -1,31 +1,36 @@
-using System.IO;
 using System.Text.Json;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using Microsoft.Win32;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
 using SavefileManager.Helpers;
-using SavefileManager.Models;
 using SavefileManager.Services;
+using SavefileManager.Models;
 
 namespace SavefileManager.Views;
 
 /// <summary>Lets the user pick a colour for every themed part of the UI, with live preview.</summary>
 public partial class ThemeEditorWindow : Window
 {
-    private readonly ThemeDefinition _working;
-    private readonly ThemeDefinition _previouslyActive;
+    private readonly ThemeDefinition _working = new();
+    private readonly ThemeDefinition _previouslyActive = new();
     private readonly Dictionary<string, (Border Swatch, TextBox Hex)> _rows = new();
     private bool _updatingHex;
     private bool _saved;
 
-    /// <summary>The edited theme; only valid when ShowDialog() returned true.</summary>
+    public bool Accepted { get; private set; }
+
+    /// <summary>The edited theme; only valid when <see cref="Accepted"/> is true.</summary>
     public ThemeDefinition Result => _working;
 
-    public ThemeEditorWindow(ThemeDefinition customTheme, ThemeDefinition currentlyActive)
+    public ThemeEditorWindow()
     {
         InitializeComponent();
+    }
+
+    public ThemeEditorWindow(ThemeDefinition customTheme, ThemeDefinition currentlyActive) : this()
+    {
         ThemeManager.Attach(this);
         _working = customTheme.Clone();
         _working.Name = ThemeManager.CustomName;
@@ -37,6 +42,7 @@ public partial class ThemeEditorWindow : Window
 
         BuildRows();
         ThemeManager.Apply(_working);   // preview straight away
+        Closing += Window_Closing;
     }
 
     private void BuildRows()
@@ -50,18 +56,18 @@ public partial class ThemeEditorWindow : Window
                 RowsPanel.Children.Add(new TextBlock
                 {
                     Text = key.Group,
-                    FontWeight = FontWeights.Bold,
+                    FontWeight = FontWeight.Bold,
                     FontSize = 14,
                     Margin = new Thickness(0, RowsPanel.Children.Count == 0 ? 0 : 16, 0, 6)
                 });
             }
 
             var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            grid.ColumnDefinitions.Add(new ColumnDefinition(44, GridUnitType.Pixel));
+            grid.ColumnDefinitions.Add(new ColumnDefinition(96, GridUnitType.Pixel));
 
-            var label = new TextBlock { Text = key.Label, VerticalAlignment = VerticalAlignment.Center };
+            var label = new TextBlock { Text = key.Label, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
 
             var swatch = new Border
             {
@@ -69,11 +75,11 @@ public partial class ThemeEditorWindow : Window
                 Margin = new Thickness(8, 0, 8, 0),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(3),
-                Cursor = Cursors.Hand,
-                ToolTip = "Click to choose a color",
+                Cursor = new Cursor(StandardCursorType.Hand),
                 Background = new SolidColorBrush(_working.Get(key.Key))
             };
-            swatch.SetResourceReference(Border.BorderBrushProperty, "InputBorderBrush");
+            ToolTip.SetTip(swatch, "Click to choose a color");
+            swatch.Bind(Border.BorderBrushProperty, this.GetResourceObservable("InputBorderBrush"));
 
             var hex = new TextBox
             {
@@ -83,11 +89,11 @@ public partial class ThemeEditorWindow : Window
             };
 
             var k = key;
-            swatch.MouseLeftButtonDown += (_, _) => PickColor(k);
+            swatch.PointerPressed += (_, _) => PickColor(k);
             hex.TextChanged += (_, _) =>
             {
                 if (_updatingHex) return;
-                var t = hex.Text.Trim().TrimStart('#');
+                var t = (hex.Text ?? "").Trim().TrimStart('#');
                 if (t.Length == 6 && ColorUtil.TryParseHex(hex.Text, out var c))
                     SetColor(k.Key, c, updateHexBox: false);
             };
@@ -116,15 +122,13 @@ public partial class ThemeEditorWindow : Window
         ThemeManager.Apply(_working);
     }
 
-    private void PickColor(ThemeKey key)
+    private async void PickColor(ThemeKey key)
     {
         var original = _working.Get(key.Key);
-        var dlg = new ColorPickerDialog(original, key.Label) { Owner = this };
+        var dlg = new ColorPickerDialog(original, key.Label);
         dlg.ColorChanged += c => SetColor(key.Key, c, updateHexBox: true);
-        if (dlg.ShowDialog() == true)
-            SetColor(key.Key, dlg.SelectedColor, true);
-        else
-            SetColor(key.Key, original, true);
+        await Dialogs.ShowModal(dlg, this);
+        SetColor(key.Key, dlg.Accepted ? dlg.SelectedColor : original, true);
     }
 
     private void RefreshAllRows()
@@ -140,10 +144,10 @@ public partial class ThemeEditorWindow : Window
         ThemeManager.Apply(_working);
     }
 
-    private void LoadBase_Click(object sender, RoutedEventArgs e)
+    private async void LoadBase_Click(object? sender, RoutedEventArgs e)
     {
         if (BaseCombo.SelectedItem is not string name) return;
-        if (!Dialogs.Confirm(this, "Load Colors",
+        if (!await Dialogs.Confirm(this, "Load Colors",
                 $"Replace all colors below with the \"{name}\" theme colors?"))
             return;
         _working.CopyColorsFrom(BuiltInThemes.Create(name));
@@ -152,33 +156,30 @@ public partial class ThemeEditorWindow : Window
 
     // ---------------------------------------------------------- import / export
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
+    private static readonly string[] JsonPattern = { "*.json" };
 
-    private void Export_Click(object sender, RoutedEventArgs e)
+    private async void Export_Click(object? sender, RoutedEventArgs e)
     {
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export custom theme",
-            Filter = "Theme file (*.json)|*.json",
-            FileName = "savefile-manager-theme.json"
-        };
-        if (dlg.ShowDialog(this) != true) return;
+        var path = await Pickers.SaveFile(this, "Export custom theme", "savefile-manager-theme.json",
+            "Theme file", JsonPattern);
+        if (path == null) return;
         try
         {
-            File.WriteAllText(dlg.FileName, JsonSerializer.Serialize(_working, Json));
+            File.WriteAllText(path, JsonSerializer.Serialize(_working, Json));
         }
         catch (Exception ex)
         {
-            Dialogs.Info(this, "Export Failed", ex.Message);
+            await Dialogs.Info(this, "Export Failed", ex.Message);
         }
     }
 
-    private void Import_Click(object sender, RoutedEventArgs e)
+    private async void Import_Click(object? sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFileDialog { Title = "Import theme", Filter = "Theme file (*.json)|*.json" };
-        if (dlg.ShowDialog(this) != true) return;
+        var path = await Pickers.OpenFile(this, "Import theme", "Theme file", JsonPattern);
+        if (path == null) return;
         try
         {
-            var imported = JsonSerializer.Deserialize<ThemeDefinition>(File.ReadAllText(dlg.FileName), Json);
+            var imported = JsonSerializer.Deserialize<ThemeDefinition>(File.ReadAllText(path), Json);
             if (imported == null) throw new InvalidDataException("The file is empty.");
             imported.FillMissing(_working);
             _working.CopyColorsFrom(imported);
@@ -186,20 +187,25 @@ public partial class ThemeEditorWindow : Window
         }
         catch (Exception ex)
         {
-            Dialogs.Info(this, "Import Failed", "That file isn't a valid theme file.\n\n" + ex.Message);
+            await Dialogs.Info(this, "Import Failed", "That file isn't a valid theme file.\n\n" + ex.Message);
         }
     }
 
     // ---------------------------------------------------------- closing
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private void Save_Click(object? sender, RoutedEventArgs e)
     {
         _saved = true;
-        DialogResult = true;
+        Accepted = true;
+        Close();
     }
 
-    private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    {
+        Accepted = false;
+        Close();
+    }
 
-    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    private void Window_Closing(object? sender, WindowClosingEventArgs e)
     {
         // Closed without saving: put back whatever theme was active before.
         if (!_saved) ThemeManager.Apply(_previouslyActive);

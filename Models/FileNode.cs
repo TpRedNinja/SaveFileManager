@@ -16,7 +16,7 @@ public class FileNode : INotifyPropertyChanged
     public bool IsFolder { get; init; }
 
     /// <summary>Picture chosen by the user for this file/folder; null shows the default icon.</summary>
-    public System.Windows.Media.ImageSource? CustomIcon { get; set; }
+    public Avalonia.Media.IImage? CustomIcon { get; set; }
     public bool HasCustomIcon => CustomIcon != null;
     public string Icon => IsFolder ? "\U0001F4C1" : "\U0001F4C4";
     public ObservableCollection<FileNode> Children { get; } = new();

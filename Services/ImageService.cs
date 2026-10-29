@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using Avalonia.Media.Imaging;
 
 namespace SavefileManager.Services;
 
@@ -12,11 +8,15 @@ namespace SavefileManager.Services;
 /// </summary>
 public static class ImageService
 {
-    public const string FileFilter =
-        "Images (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico;*.tif;*.tiff)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico;*.tif;*.tiff|All files|*.*";
+    /// <summary>File patterns for the open-file dialog.</summary>
+    public static readonly string[] Patterns =
+    {
+        "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.ico", "*.tif", "*.tiff", "*.webp",
+        "*.PNG", "*.JPG", "*.JPEG", "*.BMP", "*.GIF", "*.ICO", "*.TIF", "*.TIFF", "*.WEBP",
+    };
 
     private static string _dir = "";
-    private static readonly Dictionary<string, ImageSource> Cache = new();
+    private static readonly Dictionary<string, Bitmap> Cache = new();
 
     public static void Init(string configDir)
     {
@@ -24,19 +24,20 @@ public static class ImageService
         Directory.CreateDirectory(_dir);
     }
 
-    private static BitmapImage? Decode(string fullPath, int decodeWidth)
+    private static Bitmap? Decode(string fullPath, int decodeWidth)
     {
         try
         {
-            var bi = new BitmapImage();
-            bi.BeginInit();
-            bi.CacheOption = BitmapCacheOption.OnLoad;   // read it now, don't keep the file locked
-            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-            bi.UriSource = new Uri(fullPath, UriKind.Absolute);
-            if (decodeWidth > 0) bi.DecodePixelWidth = decodeWidth;
-            bi.EndInit();
-            bi.Freeze();
-            return bi;
+            using var fs = File.OpenRead(fullPath);
+            var bmp = new Bitmap(fs);
+            if (decodeWidth > 0 && bmp.PixelSize.Width > decodeWidth)
+            {
+                // big picture: decode a smaller copy (saves memory); never enlarge small ones
+                bmp.Dispose();
+                fs.Position = 0;
+                bmp = Bitmap.DecodeToWidth(fs, decodeWidth);
+            }
+            return bmp;
         }
         catch
         {
@@ -47,8 +48,10 @@ public static class ImageService
     /// <summary>Copies the picture into config/images/&lt;subfolder&gt; and returns its relative name.</summary>
     public static string ImportImage(string sourcePath, string subfolder)
     {
-        if (Decode(sourcePath, 64) == null)
-            throw new InvalidDataException("That file isn't a picture Windows can read (png, jpg, bmp, gif, ico or tiff).");
+        var probe = Decode(sourcePath, 64);
+        if (probe == null)
+            throw new InvalidDataException("That file isn't a picture this program can read (png, jpg, bmp, gif, ico, tiff or webp).");
+        probe.Dispose();
 
         var dir = Path.Combine(_dir, subfolder);
         Directory.CreateDirectory(dir);
@@ -58,7 +61,7 @@ public static class ImageService
     }
 
     /// <summary>Loads an image from config/images. Returns null if it is missing or unreadable.</summary>
-    public static ImageSource? Load(string? relative, int decodeWidth = 0)
+    public static Bitmap? Load(string? relative, int decodeWidth = 0)
     {
         if (string.IsNullOrWhiteSpace(relative) || _dir.Length == 0) return null;
         var key = relative + "@" + decodeWidth;
@@ -66,7 +69,9 @@ public static class ImageService
 
         var root = Path.GetFullPath(_dir);
         var full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
-        if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase) || !File.Exists(full)) return null;
+        // must stay inside config/images (no "..\.." tricks from an edited settings file)
+        if (!full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(full))
+            return null;
 
         var img = Decode(full, decodeWidth);
         if (img != null) Cache[key] = img;

@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
-using System.IO;
-using System.Linq;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Threading;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SavefileManager.Helpers;
 using SavefileManager.Models;
 using SavefileManager.Services;
@@ -16,6 +16,10 @@ namespace SavefileManager;
 // File lists, watching folders and the backup / replace / rename / delete operations.
 public partial class MainWindow
 {
+    // Windows paths ignore case, Linux paths do not.
+    private static readonly StringComparer PathCmp =
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
     private FileSystemWatcher? _watchPersonal, _watchGame;
     private DispatcherTimer _refreshTimer = null!;
 
@@ -73,7 +77,7 @@ public partial class MainWindow
     // Watcher events arrive on a worker thread and in bursts: debounce on the UI thread.
     private void PokeRefresh()
     {
-        Dispatcher.BeginInvoke(() =>
+        Dispatcher.UIThread.Post(() =>
         {
             _refreshTimer.Stop();
             _refreshTimer.Start();
@@ -144,27 +148,23 @@ public partial class MainWindow
         if (n > 0) { _current.Touch(); Store.Save(); }
     }
 
-    private void SetIconSelected(bool isGame)
+    private async Task SetIconSelected(bool isGame)
     {
         var node = SelectedNode(isGame ? _gameNodes : _personalNodes);
         if (node == null || _current == null) return;
         var key = IconKey(isGame, node.FullPath);
         if (key == null) return;
 
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = $"Choose a picture for \"{node.Name}\"",
-            Filter = ImageService.FileFilter
-        };
-        if (dlg.ShowDialog(this) != true) return;
+        var path = await Pickers.OpenImage(this, $"Choose a picture for \"{node.Name}\"");
+        if (path == null) return;
         try
         {
             // copied into config/images, so it keeps working if the original is deleted
-            _current.FileIcons[key] = ImageService.ImportImage(dlg.FileName, "icons");
+            _current.FileIcons[key] = ImageService.ImportImage(path, "icons");
         }
         catch (Exception ex)
         {
-            Dialogs.Info(this, "Couldn't use that picture", ex.Message);
+            await Dialogs.Info(this, "Couldn't use that picture", ex.Message);
             return;
         }
         _current.Touch();
@@ -187,7 +187,7 @@ public partial class MainWindow
     {
         // keep what was expanded / selected across refreshes
         var expanded = FileNode.Flatten(target).Where(n => n.IsExpanded)
-            .Select(n => n.FullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .Select(n => n.FullPath).ToHashSet(PathCmp);
         var selected = FileNode.Flatten(target).FirstOrDefault(n => n.IsSelected)?.FullPath;
 
         var built = FileNode.Build(root, ext, alwaysShowSubfolders);
@@ -195,7 +195,7 @@ public partial class MainWindow
         foreach (var n in FileNode.Flatten(built))
         {
             if (expanded.Contains(n.FullPath)) n.IsExpanded = true;
-            if (selected != null && n.FullPath.Equals(selected, StringComparison.OrdinalIgnoreCase)) n.IsSelected = true;
+            if (selected != null && PathCmp.Equals(n.FullPath, selected)) n.IsSelected = true;
         }
 
         target.Clear();
@@ -217,7 +217,7 @@ public partial class MainWindow
         {
             foreach (var n in level)
             {
-                if (n.FullPath.Equals(path, StringComparison.OrdinalIgnoreCase))
+                if (PathCmp.Equals(n.FullPath, path))
                 {
                     DeselectAll(nodes);
                     n.IsSelected = true;
@@ -236,37 +236,34 @@ public partial class MainWindow
 
     // ------------------------------------------------------------------ mouse + context menus
 
-    private static T? FindAncestor<T>(DependencyObject? start) where T : DependencyObject
-    {
-        var d = start;
-        while (d != null)
-        {
-            if (d is T t) return t;
-            d = d is Visual or System.Windows.Media.Media3D.Visual3D
-                ? VisualTreeHelper.GetParent(d)
-                : LogicalTreeHelper.GetParent(d);
-        }
-        return null;
-    }
-
-    private ObservableCollection<FileNode> NodesOf(object sender) =>
+    private ObservableCollection<FileNode> NodesOf(object? sender) =>
         ReferenceEquals(sender, GameTree) ? _gameNodes : _personalNodes;
 
-    // Clicking empty space in a list clears its selection (so "backup into the main folder" is possible).
-    private void Tree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void HookTreeMouse()
     {
-        var src = e.OriginalSource as DependencyObject;
-        if (FindAncestor<TreeViewItem>(src) != null || FindAncestor<System.Windows.Controls.Primitives.ScrollBar>(src) != null)
-            return;
-        DeselectAll(NodesOf(sender));
+        // tunnelling = we see the click before the tree handles it
+        PersonalTree.AddHandler(PointerPressedEvent, Tree_PointerPressed, RoutingStrategies.Tunnel);
+        GameTree.AddHandler(PointerPressedEvent, Tree_PointerPressed, RoutingStrategies.Tunnel);
     }
 
-    private void Tree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private void Tree_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var nodes = NodesOf(sender);
-        var item = FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject);
-        DeselectAll(nodes);
-        if (item?.DataContext is FileNode node) node.IsSelected = true;
+        var src = e.Source as Visual;
+        var item = src?.FindAncestorOfType<TreeViewItem>(true);
+        var props = e.GetCurrentPoint(sender as Visual).Properties;
+
+        if (props.IsLeftButtonPressed)
+        {
+            // Clicking empty space in a list clears its selection (so "backup into the main folder" is possible).
+            if (item != null || src?.FindAncestorOfType<ScrollBar>(true) != null) return;
+            DeselectAll(nodes);
+        }
+        else if (props.IsRightButtonPressed)
+        {
+            DeselectAll(nodes);
+            if (item?.DataContext is FileNode node) node.IsSelected = true;
+        }
     }
 
     private void BuildTreeMenus()
@@ -281,20 +278,22 @@ public partial class MainWindow
         var rename = new MenuItem { Header = "Rename" };
         var delete = new MenuItem { Header = "Delete" };
         var folder = new MenuItem { Header = "Create Folder" };
-        rename.Click += (_, _) => RenameSelected(isGame);
-        delete.Click += (_, _) => DeleteSelected(isGame);
-        folder.Click += (_, _) => CreateFolder(isGame);
+        rename.Click += async (_, _) => await RenameSelected(isGame);
+        delete.Click += async (_, _) => await DeleteSelected(isGame);
+        folder.Click += async (_, _) => await CreateFolder(isGame);
+        var setIcon = new MenuItem { Header = "Set icon..." };
+        var clearIcon = new MenuItem { Header = "Remove icon" };
+        setIcon.Click += async (_, _) => await SetIconSelected(isGame);
+        clearIcon.Click += (_, _) => RemoveIconSelected(isGame);
+
         menu.Items.Add(rename);
         menu.Items.Add(delete);
         menu.Items.Add(folder);
-        var setIcon = new MenuItem { Header = "Set icon..." };
-        var clearIcon = new MenuItem { Header = "Remove icon" };
-        setIcon.Click += (_, _) => SetIconSelected(isGame);
-        clearIcon.Click += (_, _) => RemoveIconSelected(isGame);
         menu.Items.Add(new Separator());
         menu.Items.Add(setIcon);
         menu.Items.Add(clearIcon);
-        menu.Opened += (_, _) =>
+
+        menu.Opening += (_, _) =>
         {
             var sel = SelectedNode(isGame ? _gameNodes : _personalNodes);
             bool has = sel != null;
@@ -312,10 +311,12 @@ public partial class MainWindow
     private static bool IsValidName(string name) =>
         name.Length > 0 && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 && name != "." && name != "..";
 
-    private void CopyFailed(Exception ex)
+    private const string BadNameText = "That name contains characters that aren't allowed in file names.";
+
+    private Task CopyFailed(Exception ex)
     {
         Log.Error($"Couldn't copy: {ex.Message}");
-        Dialogs.Info(this, "COPY ERROR", "Couldn't copy.\n\n" + ex.Message);
+        return Dialogs.Info(this, "COPY ERROR", "Couldn't copy.\n\n" + ex.Message);
     }
 
     private static bool IsIoProblem(Exception ex) =>
@@ -329,19 +330,19 @@ public partial class MainWindow
     }
 
     // ------------------------------------------------------------------ => Replace
-    private void Replace_Click(object sender, RoutedEventArgs e)
+    private async void Replace_Click(object? sender, RoutedEventArgs e)
     {
         var sp = SelectedNode(_personalNodes);
         var sg = SelectedNode(_gameNodes);
         if (sp == null || sg == null)
         {
-            Dialogs.Info(this, "No selection",
+            await Dialogs.Info(this, "No selection",
                 "Please choose a file/folder to copy from the left list\nand a file/folder to overwrite from the right list.");
             return;
         }
         if (sp.IsFolder != sg.IsFolder)
         {
-            Dialogs.Info(this, "Folder-to-File Warning", "Please make sure you're copying folder-to-folder or file-to-file.");
+            await Dialogs.Info(this, "Folder-to-File Warning", "Please make sure you're copying folder-to-folder or file-to-file.");
             return;
         }
 
@@ -359,7 +360,7 @@ public partial class MainWindow
         }
         catch (Exception ex) when (IsIoProblem(ex))
         {
-            CopyFailed(ex);
+            await CopyFailed(ex);
             ReenableLater(ReplaceButton);
             return;
         }
@@ -373,14 +374,14 @@ public partial class MainWindow
     }
 
     // ------------------------------------------------------------------ <= Backup
-    private void Backup_Click(object sender, RoutedEventArgs e)
+    private async void Backup_Click(object? sender, RoutedEventArgs e)
     {
         var paths = _current?.PathsForThisPc;
         var sg = SelectedNode(_gameNodes);
         if (paths == null) return;
         if (sg == null)
         {
-            Dialogs.Info(this, "No selection", "Please choose a file/folder to back up from the right list.");
+            await Dialogs.Info(this, "No selection", "Please choose a file/folder to back up from the right list.");
             return;
         }
 
@@ -396,11 +397,11 @@ public partial class MainWindow
 
         while (true)
         {
-            var input = Dialogs.Prompt(this, "Backup file", "Choose a name for the backup file/folder");
+            var input = await Dialogs.Prompt(this, "Backup file", "Choose a name for the backup file/folder");
             if (input == null) return;
             name = input.Trim();
-            if (name.Length == 0) { Dialogs.Info(this, "No name", "Must choose a file name."); continue; }
-            if (!IsValidName(name)) { Dialogs.Info(this, "Invalid name", "That name contains characters Windows doesn't allow."); continue; }
+            if (name.Length == 0) { await Dialogs.Info(this, "No name", "Must choose a file name."); continue; }
+            if (!IsValidName(name)) { await Dialogs.Info(this, "Invalid name", BadNameText); continue; }
 
             if (srcIsFile)
             {
@@ -413,10 +414,10 @@ public partial class MainWindow
 
             if ((srcIsFile && dirExists) || (!srcIsFile && fileExists))
             {
-                Dialogs.Info(this, "Already exists", "Can't use this name, choose another one.");
+                await Dialogs.Info(this, "Already exists", "Can't use this name, choose another one.");
                 continue;
             }
-            if (Dialogs.Confirm(this, "Already exists", "File/folder already exists, would you like to overwrite it?"))
+            if (await Dialogs.Confirm(this, "Already exists", "File/folder already exists, would you like to overwrite it?"))
             {
                 overwrite = true;
                 break;
@@ -434,7 +435,7 @@ public partial class MainWindow
         }
         catch (Exception ex) when (IsIoProblem(ex))
         {
-            CopyFailed(ex);
+            await CopyFailed(ex);
             return;
         }
 
@@ -443,23 +444,23 @@ public partial class MainWindow
     }
 
     // ------------------------------------------------------------------ context menu actions
-    private void RenameSelected(bool isGame)
+    private async Task RenameSelected(bool isGame)
     {
         var nodes = isGame ? _gameNodes : _personalNodes;
         var node = SelectedNode(nodes);
         if (node == null) return;
 
-        if (isGame && !Dialogs.Confirm(this, "Renaming Game file",
+        if (isGame && !await Dialogs.Confirm(this, "Renaming Game file",
                 "The game may not recognize the file if you rename it.\n\nDo you want to rename?"))
             return;
 
-        var input = Dialogs.Prompt(this, "New File Name", "Enter a new name for the file", node.Name);
+        var input = await Dialogs.Prompt(this, "New File Name", "Enter a new name for the file", node.Name);
         if (input == null) return;
         var newName = input.Trim();
         if (newName.Length == 0) return;
         if (!IsValidName(newName))
         {
-            Dialogs.Info(this, "Invalid name", "That name contains characters Windows doesn't allow.");
+            await Dialogs.Info(this, "Invalid name", BadNameText);
             return;
         }
         if (!node.IsFolder)
@@ -474,7 +475,7 @@ public partial class MainWindow
 
         try
         {
-            if (string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+            if (OperatingSystem.IsWindows() && string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
             {
                 // only the letter case changes - Windows needs a two-step move for that
                 var temp = oldPath + ".rename-tmp";
@@ -483,18 +484,18 @@ public partial class MainWindow
             }
             else if (File.Exists(newPath) || Directory.Exists(newPath))
             {
-                if (!Dialogs.Confirm(this, "Already Exists", "File/Folder already exists, would you like to overwrite?"))
+                if (!await Dialogs.Confirm(this, "Already Exists", "File/Folder already exists, would you like to overwrite?"))
                     return;
                 if (node.IsFolder)
                 {
                     if (!Directory.Exists(newPath))
                     {
-                        Dialogs.Info(this, "Can't Overwrite", "A file with that name exists; a folder can't replace it.");
+                        await Dialogs.Info(this, "Can't Overwrite", "A file with that name exists; a folder can't replace it.");
                         return;
                     }
                     if (Directory.EnumerateFileSystemEntries(newPath).Any())
                     {
-                        Dialogs.Info(this, "Can't Overwrite",
+                        await Dialogs.Info(this, "Can't Overwrite",
                             "That folder isn't empty, so it won't be replaced. Please choose another name.");
                         return;
                     }
@@ -505,7 +506,7 @@ public partial class MainWindow
                 {
                     if (!File.Exists(newPath))
                     {
-                        Dialogs.Info(this, "Can't Overwrite", "A folder with that name exists; a file can't replace it.");
+                        await Dialogs.Info(this, "Can't Overwrite", "A folder with that name exists; a file can't replace it.");
                         return;
                     }
                     // keep a safety copy of the file being overwritten
@@ -519,7 +520,7 @@ public partial class MainWindow
         catch (Exception ex) when (IsIoProblem(ex))
         {
             Log.Error($"Rename failed: {ex.Message}");
-            Dialogs.Info(this, "Rename Failed", ex.Message);
+            await Dialogs.Info(this, "Rename Failed", ex.Message);
             return;
         }
 
@@ -528,12 +529,12 @@ public partial class MainWindow
         SelectPath(nodes, newPath);
     }
 
-    private void DeleteSelected(bool isGame)
+    private async Task DeleteSelected(bool isGame)
     {
         var nodes = isGame ? _gameNodes : _personalNodes;
         var node = SelectedNode(nodes);
         if (node == null) return;
-        if (!Dialogs.Confirm(this, "Deleting File",
+        if (!await Dialogs.Confirm(this, "Deleting File",
                 $"Are you sure you want to delete \"{node.Name}\"?\n\nA copy is kept in the backups folder (Options > Open backups folder)."))
             return;
 
@@ -547,7 +548,7 @@ public partial class MainWindow
         catch (Exception ex) when (IsIoProblem(ex))
         {
             Log.Error($"Couldn't back up before delete: {ex.Message}");
-            Dialogs.Info(this, "FAILED BACKUP ERROR", "Couldn't back up the file before deleting, so nothing was deleted.\n\n" + ex.Message);
+            await Dialogs.Info(this, "FAILED BACKUP ERROR", "Couldn't back up the file before deleting, so nothing was deleted.\n\n" + ex.Message);
             return;
         }
 
@@ -559,14 +560,14 @@ public partial class MainWindow
         catch (Exception ex) when (IsIoProblem(ex))
         {
             Log.Error($"Couldn't delete: {ex.Message}");
-            Dialogs.Info(this, "FAILED DELETE ERROR", "Couldn't delete.\n\n" + ex.Message);
+            await Dialogs.Info(this, "FAILED DELETE ERROR", "Couldn't delete.\n\n" + ex.Message);
             return;
         }
         RemoveIconKeys(isGame, node.FullPath);
         RefreshTrees();
     }
 
-    private void CreateFolder(bool isGame)
+    private async Task CreateFolder(bool isGame)
     {
         var paths = _current?.PathsForThisPc;
         if (paths == null) return;
@@ -579,15 +580,15 @@ public partial class MainWindow
         string newFolder;
         while (true)
         {
-            var input = Dialogs.Prompt(this, "New Folder Name", "Enter the name of the folder");
+            var input = await Dialogs.Prompt(this, "New Folder Name", "Enter the name of the folder");
             if (input == null) return;
             var name = input.Trim();
             if (name.Length == 0) return;
-            if (!IsValidName(name)) { Dialogs.Info(this, "Invalid name", "That name contains characters Windows doesn't allow."); continue; }
+            if (!IsValidName(name)) { await Dialogs.Info(this, "Invalid name", BadNameText); continue; }
             newFolder = Path.Combine(parent, name);
             if (Directory.Exists(newFolder) || File.Exists(newFolder))
             {
-                Dialogs.Info(this, "Already exists", "Folder already exists, choose a different name.");
+                await Dialogs.Info(this, "Already exists", "Folder already exists, choose a different name.");
                 continue;
             }
             break;
@@ -596,7 +597,7 @@ public partial class MainWindow
         try { Directory.CreateDirectory(newFolder); }
         catch (Exception ex) when (IsIoProblem(ex))
         {
-            Dialogs.Info(this, "Couldn't create folder", ex.Message);
+            await Dialogs.Info(this, "Couldn't create folder", ex.Message);
             return;
         }
         RefreshTrees();

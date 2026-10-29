@@ -1,4 +1,4 @@
-using System.Windows.Media;
+using Avalonia.Media;
 
 namespace SavefileManager.Helpers;
 
@@ -12,7 +12,7 @@ public static class ColorUtil
             hex = hex.Trim();
             if (!hex.StartsWith('#')) hex = "#" + hex;
             if (hex.Length is not (4 or 7 or 9)) return fallback;
-            return (Color)ColorConverter.ConvertFromString(hex);
+            return Color.TryParse(hex, out var parsed) ? parsed : fallback;
         }
         catch { return fallback; }
     }
@@ -24,8 +24,7 @@ public static class ColorUtil
         hex = hex.Trim();
         if (!hex.StartsWith('#')) hex = "#" + hex;
         if (hex.Length is not (4 or 7)) return false;
-        try { color = (Color)ColorConverter.ConvertFromString(hex); return true; }
-        catch { return false; }
+        return Color.TryParse(hex, out color);
     }
 
     public static string ToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";

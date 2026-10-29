@@ -1,6 +1,6 @@
-using System;
-using System.Windows;
-using System.Windows.Media;
+using Avalonia;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using SavefileManager.Models;
 
 namespace SavefileManager.Services;
@@ -17,12 +17,16 @@ public static class AppearanceManager
 
     private static void SetBackground(string resourceKey, ImageSlot slot)
     {
-        Brush brush = Brushes.Transparent;
-        var image = ImageService.Load(slot.ImageFile, 1600);
+        var app = Application.Current;
+        if (app == null) return;
+
+        IBrush brush = Brushes.Transparent;
+        Bitmap? image = ImageService.Load(slot.ImageFile, 1600);
         if (image != null)
         {
-            var ib = new ImageBrush(image)
+            brush = new ImageBrush
             {
+                Source = image,
                 Opacity = Math.Clamp(slot.Opacity, 0.05, 1.0),
                 Stretch = slot.Stretch switch
                 {
@@ -33,9 +37,7 @@ public static class AppearanceManager
                 AlignmentX = AlignmentX.Center,
                 AlignmentY = AlignmentY.Center
             };
-            ib.Freeze();
-            brush = ib;
         }
-        Application.Current.Resources[resourceKey] = brush;
+        app.Resources[resourceKey] = brush;
     }
 }

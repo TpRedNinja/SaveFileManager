@@ -1,18 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Windows;
-using System.Windows.Media;
+using Avalonia;
+using Avalonia.Media;
 using SavefileManager.Models;
 
 namespace SavefileManager.Services;
 
 /// <summary>
-/// Installed fonts plus fonts the user adds from .ttf / .otf files. Added font files are
-/// COPIED to config/fonts (each in its own folder), so they keep working if the download is moved or deleted,
-/// and nothing has to be installed into Windows.
+/// Installed fonts plus fonts the user adds from .ttf / .otf files. An added font file is COPIED to
+/// config/fonts (so it survives the download being moved or deleted and travels with the config
+/// folder to your other computer) and made available to this user's programs. The system only
+/// picks up a new font when the program starts, so a font added now is usable after a restart.
 /// </summary>
 public static class FontService
 {
@@ -35,10 +31,13 @@ public static class FontService
         "Cascadia Code", "Cascadia Mono", "Comic Sans MS", "Courier New", "Franklin Gothic Medium",
         "Georgia", "Impact", "Lucida Console", "Palatino Linotype", "Segoe Print", "Segoe Script",
         "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana",
+        // common on Linux
+        "Inter", "Roboto", "Noto Sans", "Ubuntu", "Cantarell", "DejaVu Sans", "DejaVu Sans Mono",
+        "Liberation Sans", "Liberation Serif", "Liberation Mono",
     };
 
     private static string _dir = "";
-    private static readonly Dictionary<string, FontFamily> UserFonts = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly List<string> UserFamilies = new();
 
     public static void Init(string fontsDirectory)
     {
@@ -46,11 +45,18 @@ public static class FontService
         Directory.CreateDirectory(_dir);
         try
         {
+            int installed = 0;
             foreach (var file in Directory.EnumerateFiles(_dir, "*.*", SearchOption.AllDirectories))
             {
                 var ext = Path.GetExtension(file).ToLowerInvariant();
-                if (ext is ".ttf" or ".otf" or ".ttc") Register(file);
+                if (ext is not (".ttf" or ".otf" or ".ttc")) continue;
+                var family = FontNameReader.ReadFamilyName(file);
+                if (family == null) continue;
+                if (!UserFamilies.Contains(family, StringComparer.OrdinalIgnoreCase)) UserFamilies.Add(family);
+                // a font that came from your other computer's config folder gets installed here too
+                if (PlatformHelper.InstallUserFont(file, family, UniqueName(file))) installed++;
             }
+            if (installed > 0) Log.Info($"{installed} font(s) installed for this user; they are available after a restart");
         }
         catch (Exception ex)
         {
@@ -58,37 +64,30 @@ public static class FontService
         }
     }
 
-    private static string? Register(string file)
-    {
-        try
-        {
-            var glyph = new GlyphTypeface(new Uri(file, UriKind.Absolute));
-            string family = glyph.FamilyNames.TryGetValue(CultureInfo.GetCultureInfo("en-US"), out var en)
-                ? en
-                : glyph.FamilyNames.Values.First();
-            var folder = new Uri(Path.GetDirectoryName(file)! + Path.DirectorySeparatorChar, UriKind.Absolute);
-            UserFonts[family] = new FontFamily(folder, "./#" + family);
-            return family;
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"Couldn't read font {file}: {ex.Message}");
-            return null;
-        }
-    }
+    private static string UniqueName(string file) =>
+        new DirectoryInfo(Path.GetDirectoryName(file)!).Name + "_" + Path.GetFileName(file);
 
-    /// <summary>Copies a font file into config/fonts and makes it available. Returns its family name, or null.</summary>
-    public static string? AddFontFile(string sourcePath)
+    /// <summary>
+    /// Copies a font file into config/fonts and installs it for this user. Returns its family name,
+    /// or null if it isn't a usable font. <paramref name="needsRestart"/> is true when the font
+    /// isn't visible to the program yet.
+    /// </summary>
+    public static string? AddFontFile(string sourcePath, out bool needsRestart)
     {
+        needsRestart = false;
+        var family = FontNameReader.ReadFamilyName(sourcePath);
+        if (family == null) return null;
+
         string folder = Path.Combine(_dir, Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(folder);
             var dest = Path.Combine(folder, Path.GetFileName(sourcePath));
             File.Copy(sourcePath, dest, true);
-            var name = Register(dest);
-            if (name == null) TryDeleteOwnFolder(folder);
-            return name;
+            PlatformHelper.InstallUserFont(dest, family, UniqueName(dest));
+            if (!UserFamilies.Contains(family, StringComparer.OrdinalIgnoreCase)) UserFamilies.Add(family);
+            needsRestart = !SystemFontNames().Contains(family, StringComparer.OrdinalIgnoreCase);
+            return family;
         }
         catch (Exception ex)
         {
@@ -98,22 +97,28 @@ public static class FontService
         }
     }
 
-    // Only ever used on the folder this method just created for a font that turned out to be unusable.
+    // Only ever used on the folder this method just created for a font that couldn't be added.
     private static void TryDeleteOwnFolder(string folder)
     {
         try { if (Directory.Exists(folder)) Directory.Delete(folder, true); } catch { /* ignore */ }
     }
 
-    /// <summary>User-added fonts first, then common fonts, then everything else installed.</summary>
+    private static IEnumerable<string> SystemFontNames()
+    {
+        try { return FontManager.Current.SystemFonts.Select(f => f.Name).ToList(); }
+        catch { return Array.Empty<string>(); }
+    }
+
+    /// <summary>Fonts you added first, then common fonts, then everything else installed.</summary>
     public static List<string> AllFontNames()
     {
         var names = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Add(string n) { if (seen.Add(n)) names.Add(n); }
 
-        foreach (var n in UserFonts.Keys.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)) Add(n);
+        foreach (var n in UserFamilies.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)) Add(n);
 
-        var installed = new HashSet<string>(Fonts.SystemFontFamilies.Select(f => f.Source), StringComparer.OrdinalIgnoreCase);
+        var installed = new HashSet<string>(SystemFontNames(), StringComparer.OrdinalIgnoreCase);
         foreach (var c in Curated) if (installed.Contains(c)) Add(c);
         foreach (var n in installed.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)) Add(n);
         return names;
@@ -121,8 +126,9 @@ public static class FontService
 
     public static FontFamily Resolve(string? name)
     {
+        // A name that isn't installed here (e.g. "Segoe UI" on Linux) simply falls back to the system font.
         if (string.IsNullOrWhiteSpace(name)) name = "Segoe UI";
-        return UserFonts.TryGetValue(name, out var f) ? f : new FontFamily(name);
+        return new FontFamily(name);
     }
 
     private static string NameFor(FontSettings s, string key)
@@ -131,11 +137,12 @@ public static class FontService
         return s.GlobalFont;
     }
 
-    /// <summary>Publishes the fonts as "Font.General", "Font.Title", ... application resources.</summary>
+    /// <summary>Publishes the fonts as "FontGeneral", "FontTitle", ... application resources.</summary>
     public static void Apply(FontSettings s)
     {
-        var res = Application.Current.Resources;
+        var res = Application.Current?.Resources;
+        if (res == null) return;
         foreach (var (key, _) in Elements)
-            res["Font." + key] = Resolve(NameFor(s, key));
+            res["Font" + key] = Resolve(NameFor(s, key));
     }
 }

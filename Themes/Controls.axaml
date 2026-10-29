@@ -1,0 +1,263 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Every colour and font below comes from a DynamicResource that ThemeManager / FontService /
+         AppearanceManager rewrite at runtime, so changes show instantly. These styles sit on top of
+         Avalonia's Fluent theme (which supplies the control templates). -->
+
+    <!-- ===================== Window ===================== -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource WindowBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontGeneral}"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <!-- ===================== Button ===================== -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ButtonTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontButton}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="14,5"/>
+        <Setter Property="MinWidth" Value="34"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonHoverBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ButtonTextBrush}"/>
+    </Style>
+    <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonPressedBackgroundBrush}"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ButtonTextBrush}"/>
+    </Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ButtonDisabledBackgroundBrush}"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+    </Style>
+    <Style Selector="Button.Arrow">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontFamily" Value="Consolas, Cascadia Mono, DejaVu Sans Mono, Liberation Mono"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Width" Value="52"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Margin" Value="8,6"/>
+    </Style>
+
+    <!-- ===================== TextBox ===================== -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InputTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource InputTextBrush}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource InputSelectionBackgroundBrush}"/>
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource InputSelectionTextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontGeneral}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="6,5"/>
+    </Style>
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="TextBox:disabled /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+    </Style>
+
+    <!-- ===================== ScrollBar ===================== -->
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="{DynamicResource ScrollTrackBrush}"/>
+    </Style>
+
+    <!-- ===================== ToolTip ===================== -->
+    <Style Selector="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource TooltipBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TooltipTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TooltipBorderBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontTooltip}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="6,3"/>
+    </Style>
+
+    <!-- ===================== ComboBox ===================== -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource ComboBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ComboTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontCombo}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MaxDropDownHeight" Value="260"/>
+    </Style>
+    <Style Selector="ComboBox:pointerover /template/ Border#Background">
+        <Setter Property="Background" Value="{DynamicResource ComboHoverBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+    </Style>
+    <Style Selector="ComboBox:pressed /template/ Border#Background">
+        <Setter Property="Background" Value="{DynamicResource ComboHoverBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="ComboBox /template/ Border#PopupBorder">
+        <Setter Property="Background" Value="{DynamicResource ComboPopupBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+    </Style>
+    <Style Selector="ComboBox /template/ PathIcon#DropDownGlyph">
+        <Setter Property="Foreground" Value="{DynamicResource ComboArrowBrush}"/>
+    </Style>
+
+    <Style Selector="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource ComboTextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontCombo}"/>
+        <Setter Property="Padding" Value="8,5"/>
+    </Style>
+    <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ComboItemHoverBackgroundBrush}"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ComboTextBrush}"/>
+    </Style>
+    <Style Selector="ComboBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ComboItemSelectedBackgroundBrush}"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ComboItemSelectedTextBrush}"/>
+    </Style>
+    <Style Selector="ComboBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ComboItemSelectedBackgroundBrush}"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource ComboItemSelectedTextBrush}"/>
+    </Style>
+
+    <!-- ===================== File lists (TreeView) ===================== -->
+    <!-- The list background and picture are drawn by the window behind the (transparent) tree. -->
+    <Style Selector="TreeView">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource TreeTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TreeBorderBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontTree}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="2"/>
+    </Style>
+
+    <!-- Rows are bound to FileNode (IsExpanded / IsSelected are two-way bound). -->
+    <Style Selector="TreeViewItem">
+        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TreeTextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontTree}"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="TreeViewItem /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TreeTextBrush}"/>
+    </Style>
+    <Style Selector="TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron">
+        <Setter Property="Foreground" Value="{DynamicResource TreeExpanderBrush}"/>
+    </Style>
+    <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource TreeHoverBackgroundBrush}"/>
+    </Style>
+    <Style Selector="TreeViewItem:pointerover /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TreeTextBrush}"/>
+    </Style>
+    <!-- selected, list not focused -->
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource TreeInactiveSelectionBackgroundBrush}"/>
+    </Style>
+    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource TreeInactiveSelectionBackgroundBrush}"/>
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TreeInactiveSelectionTextBrush}"/>
+    </Style>
+    <Style Selector="TreeViewItem:selected:pointerover /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TreeInactiveSelectionTextBrush}"/>
+    </Style>
+    <!-- selected, list focused -->
+    <Style Selector="TreeView:focus-within TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource TreeSelectionBackgroundBrush}"/>
+    </Style>
+    <Style Selector="TreeView:focus-within TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource TreeSelectionBackgroundBrush}"/>
+    </Style>
+    <Style Selector="TreeView:focus-within TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TreeSelectionTextBrush}"/>
+    </Style>
+    <Style Selector="TreeView:focus-within TreeViewItem:selected:pointerover /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TreeSelectionTextBrush}"/>
+    </Style>
+
+    <!-- ===================== Menus ===================== -->
+    <Style Selector="Menu">
+        <Setter Property="Background" Value="{DynamicResource MenuBarBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MenuBarTextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontMenu}"/>
+    </Style>
+    <Style Selector="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontMenu}"/>
+    </Style>
+    <Style Selector="Menu > MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource MenuBarTextBrush}"/>
+    </Style>
+    <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}"/>
+    </Style>
+    <Style Selector="Menu > MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource MenuBarTextBrush}"/>
+    </Style>
+    <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource MenuHoverBackgroundBrush}"/>
+    </Style>
+    <Style Selector="MenuItem:open /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource MenuHoverBackgroundBrush}"/>
+    </Style>
+    <Style Selector="MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource MenuHoverTextBrush}"/>
+    </Style>
+    <Style Selector="Menu > MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource MenuHoverTextBrush}"/>
+    </Style>
+    <Style Selector="MenuItem:open /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource MenuHoverTextBrush}"/>
+    </Style>
+    <Style Selector="MenuItem:disabled /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+    </Style>
+    <Style Selector="ContextMenu">
+        <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource MenuBorderBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontMenu}"/>
+    </Style>
+    <Style Selector="Separator">
+        <Setter Property="Background" Value="{DynamicResource MenuSeparatorBrush}"/>
+    </Style>
+
+    <!-- ===================== Misc ===================== -->
+    <Style Selector="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.PathLabel">
+        <Setter Property="Foreground" Value="{DynamicResource PathTextBrush}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontPaths}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="Margin" Value="0,2"/>
+    </Style>
+    <Style Selector="TextBlock.PathLabel:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource PathHoverTextBrush}"/>
+    </Style>
+    <Style Selector="Border.Swatch">
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+    </Style>
+
+</Styles>
