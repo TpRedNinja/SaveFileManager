@@ -17,7 +17,7 @@ namespace SavefileManager;
 public partial class MainWindow : Window
 {
     private const string AddItem = "Add...";
-    private const string VersionText = "v1.0.0";
+    private const string VersionText = "v1.0.1";
 
     private static SettingsService Store => App.Store;
 
