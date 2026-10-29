@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using System.Windows.Media;
+using Avalonia.Media;
 
 namespace SavefileManager.Models;
 
@@ -14,7 +14,7 @@ public class FontSettings
     public bool PerElement { get; set; }
 
     /// <summary>Element key (see FontService.Elements) to font name.</summary>
-    public Dictionary<string, string> Elements { get; set; } = new();
+    public Dictionary<string, string> Elements { get; set; } = [];
 }
 
 /// <summary>A background picture behind one of the two file lists.</summary>
@@ -44,7 +44,7 @@ public class ProfileItem
 {
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
-    public ImageSource? Icon { get; init; }
+    public IImage? Icon { get; init; }
     public bool IsAdd { get; init; }
     public bool HasIcon => Icon != null;
 }

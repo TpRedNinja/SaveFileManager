@@ -1,25 +1,15 @@
-<Window x:Class="SavefileManager.Views.ThemeEditorWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SavefileManager.Views.ThemeEditorWindow"
         Title="Custom Theme" Width="600" Height="700" MinWidth="520" MinHeight="420"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="{DynamicResource WindowBackgroundBrush}"
-        Foreground="{DynamicResource TextBrush}"
-        FontFamily="{DynamicResource Font.General}"
-        Closing="Window_Closing">
-    <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto">
 
         <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,8">
             <TextBlock Text="Start from:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox x:Name="BaseCombo" Width="160" VerticalAlignment="Center"/>
             <Button Content="Load colors" Margin="8,0,0,0" Click="LoadBase_Click"
-                    ToolTip="Replace all colors below with the colors of the selected theme"/>
+                    ToolTip.Tip="Replace all colors below with the colors of the selected theme"/>
             <Button Content="Export..." DockPanel.Dock="Right" Click="Export_Click"/>
             <Button Content="Import..." DockPanel.Dock="Right" Margin="0,0,8,0" Click="Import_Click"/>
         </DockPanel>
@@ -28,12 +18,12 @@
                    Text="Click a color box to open the picker, or type a hex value like #4287F5. Everything previews live on the real window behind this one. Title bar colors only apply on Windows 11."/>
 
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel x:Name="RowsPanel" Margin="0,0,6,0"/>
+            <StackPanel x:Name="RowsPanel" Margin="0,0,14,0"/>
         </ScrollViewer>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-            <Button Content="Save" MinWidth="90" Margin="0,0,8,0" IsDefault="True" Click="Save_Click"/>
-            <Button Content="Cancel" MinWidth="90" IsCancel="True" Click="Cancel_Click"/>
+            <Button Content="Save" MinWidth="90" Margin="0,0,8,0" Click="Save_Click"/>
+            <Button Content="Cancel" MinWidth="90" Click="Cancel_Click"/>
         </StackPanel>
     </Grid>
 </Window>

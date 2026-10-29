@@ -1,9 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Windows;
-using System.Windows.Controls;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Threading;
 using SavefileManager.Models;
 using SavefileManager.Services;
 
@@ -12,27 +13,48 @@ namespace SavefileManager.Views;
 /// <summary>Fonts (one for everything, or one per part) and optional pictures behind the two file lists.</summary>
 public partial class AppearanceWindow : Window
 {
-    private readonly AppearanceSettings _original;
-    private readonly AppearanceSettings _work;
-    private readonly Dictionary<string, ComboBox> _elementCombos = new();
-    private readonly List<(ImageSlot Slot, TextBlock Label, Button Remove)> _slotRows = new();
+    private readonly AppearanceSettings _original = new();
+    private readonly AppearanceSettings _work = new();
+    private readonly Dictionary<string, ComboBox> _elementCombos = [];
     private bool _loading = true;
-    private bool _closingHandled;
+    private bool _closingHandled, _closed;
 
+    public bool Accepted { get; private set; }
     public AppearanceSettings Result => _work;
 
-    public AppearanceWindow(AppearanceSettings current)
+    public AppearanceWindow()
     {
         InitializeComponent();
+    }
+
+    public AppearanceWindow(AppearanceSettings current) : this()
+    {
+        ThemeManager.Attach(this);
         _original = current.Clone();
         _work = current.Clone();
 
+        FontNote.Text = "Added fonts are copied into the config/fonts folder and installed for your user account only " +
+                        "(nothing system-wide). A newly added font shows up in the lists after you restart the program.";
+
+        Closing += Window_Closing;
+        // Show the window first, then build the (many) font lists, so it never opens as an empty frame.
+        Opened += async (_, _) => await FillWhenShown();
+    }
+
+    private async Task FillWhenShown()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
         BuildFontControls();
         BuildBackgroundControls();
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        if (_closed) return;
         RefreshFontLists();
 
         AllRadio.IsChecked = !_work.Fonts.PerElement;
         EachRadio.IsChecked = _work.Fonts.PerElement;
+        AllRadio.IsCheckedChanged += Mode_Changed;
+        EachRadio.IsCheckedChanged += Mode_Changed;
+        GlobalCombo.SelectionChanged += GlobalCombo_Changed;
         UpdateModeUi();
         _loading = false;
     }
@@ -44,8 +66,12 @@ public partial class AppearanceWindow : Window
         foreach (var (key, label) in FontService.Elements)
         {
             var row = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
-            row.Children.Add(new TextBlock { Text = label, Width = 150, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
-            var combo = new ComboBox { Tag = key };
+            row.Children.Add(new TextBlock
+            {
+                Text = label, Width = 150, TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            var combo = new ComboBox { Tag = key, HorizontalAlignment = HorizontalAlignment.Stretch };
             combo.SelectionChanged += ElementCombo_Changed;
             row.Children.Add(combo);
             EachPanel.Children.Add(row);
@@ -84,7 +110,7 @@ public partial class AppearanceWindow : Window
         EachPanel.Opacity = EachPanel.IsEnabled ? 1.0 : 0.5;
     }
 
-    private void Mode_Changed(object sender, RoutedEventArgs e)
+    private void Mode_Changed(object? sender, RoutedEventArgs e)
     {
         if (_loading) return;
         _work.Fonts.PerElement = EachRadio.IsChecked == true;
@@ -92,44 +118,40 @@ public partial class AppearanceWindow : Window
         Preview();
     }
 
-    private void GlobalCombo_Changed(object sender, SelectionChangedEventArgs e)
+    private void GlobalCombo_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (_loading || GlobalCombo.SelectedItem is not string name) return;
         _work.Fonts.GlobalFont = name;
-        // parts that were never given their own font follow the global one
         Preview();
     }
 
-    private void ElementCombo_Changed(object sender, SelectionChangedEventArgs e)
+    private void ElementCombo_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (_loading || sender is not ComboBox box || box.Tag is not string key || box.SelectedItem is not string name) return;
         _work.Fonts.Elements[key] = name;
         Preview();
     }
 
-    private void AddFont_Click(object sender, RoutedEventArgs e)
+    private async void AddFont_Click(object? sender, RoutedEventArgs e)
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "Choose font file(s)",
-            Filter = "Font files (*.ttf;*.otf;*.ttc)|*.ttf;*.otf;*.ttc|All files|*.*",
-            Multiselect = true
-        };
-        if (dlg.ShowDialog(this) != true) return;
+        var files = await Pickers.OpenFiles(this, "Choose font file(s)", "Font files",
+            ["*.ttf", "*.otf", "*.ttc", "*.TTF", "*.OTF", "*.TTC"], true);
+        if (files.Count == 0) return;
 
         string? last = null;
+        bool needsRestart = false;
         var failed = new List<string>();
-        foreach (var file in dlg.FileNames)
+        foreach (var file in files)
         {
-            var name = FontService.AddFontFile(file);
-            if (name == null) failed.Add(System.IO.Path.GetFileName(file)); else last = name;
+            var name = FontService.AddFontFile(file, out bool restart);
+            if (name == null) failed.Add(Path.GetFileName(file));
+            else { last = name; needsRestart |= restart; }
         }
 
         if (last != null)
         {
-            // keep current choices, then select the newly added font where it's relevant
             RefreshFontLists();
-            if (AllRadio.IsChecked == true)
+            if (AllRadio.IsChecked == true && !needsRestart)
             {
                 _work.Fonts.GlobalFont = last;
                 GlobalCombo.SelectedItem = last;
@@ -137,7 +159,10 @@ public partial class AppearanceWindow : Window
             Preview();
         }
         if (failed.Count > 0)
-            Dialogs.Info(this, "Couldn't load font", "These files aren't usable fonts:\n\n" + string.Join("\n", failed));
+            await Dialogs.Info(this, "Couldn't load font", "These files aren't usable fonts:\n\n" + string.Join("\n", failed));
+        if (last != null && needsRestart)
+            await Dialogs.Info(this, "Restart needed",
+                "The font was added. Restart the program once and it will appear in the font lists.");
     }
 
     // ------------------------------------------------------------------ backgrounds
@@ -151,7 +176,7 @@ public partial class AppearanceWindow : Window
     private void AddBackgroundSection(string title, ImageSlot slot)
     {
         var box = new StackPanel { Margin = new Thickness(0, 6, 0, 10) };
-        box.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
+        box.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 4) });
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         var choose = new Button { Content = "Choose picture..." };
@@ -162,18 +187,23 @@ public partial class AppearanceWindow : Window
         buttons.Children.Add(label);
         box.Children.Add(buttons);
 
-        var opacityRow = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
-        opacityRow.Children.Add(new TextBlock { Text = "Opacity:", Width = 70, VerticalAlignment = VerticalAlignment.Center });
-        var pct = new TextBlock { Width = 44, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-        DockPanel.SetDock(pct, Dock.Right);
-        var slider = new Slider { Minimum = 0.05, Maximum = 1, Value = slot.Opacity, VerticalAlignment = VerticalAlignment.Center };
-        opacityRow.Children.Add(pct);
+        var opacityRow = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+        opacityRow.ColumnDefinitions.Add(new ColumnDefinition(70, GridUnitType.Pixel));
+        opacityRow.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+        opacityRow.ColumnDefinitions.Add(new ColumnDefinition(72, GridUnitType.Pixel));
+        var opLabel = new TextBlock { Text = "Opacity:", VerticalAlignment = VerticalAlignment.Center };
+        var slider = new Slider { Minimum = 0.05, Maximum = 1, Value = slot.Opacity, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+        var pct = new TextBlock { TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+        Grid.SetColumn(slider, 1);
+        Grid.SetColumn(pct, 2);
+        opacityRow.Children.Add(opLabel);
         opacityRow.Children.Add(slider);
+        opacityRow.Children.Add(pct);
         box.Children.Add(opacityRow);
 
         var fitRow = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
         fitRow.Children.Add(new TextBlock { Text = "Fit:", Width = 70, VerticalAlignment = VerticalAlignment.Center });
-        var fit = new ComboBox { Width = 200, HorizontalAlignment = HorizontalAlignment.Left };
+        var fit = new ComboBox { Width = 220, HorizontalAlignment = HorizontalAlignment.Left };
         var fitOptions = new[]
         {
             ("UniformToFill", "Fill (crop edges)"),
@@ -195,17 +225,23 @@ public partial class AppearanceWindow : Window
             pct.Text = $"{(int)Math.Round(slot.Opacity * 100)}%";
         }
 
-        choose.Click += (_, _) =>
+        choose.Click += async (_, _) =>
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Choose a background picture", Filter = ImageService.FileFilter };
-            if (dlg.ShowDialog(this) != true) return;
-            try { slot.ImageFile = ImageService.ImportImage(dlg.FileName, "backgrounds"); }
-            catch (Exception ex) { Dialogs.Info(this, "Couldn't use that picture", ex.Message); return; }
+            var path = await Pickers.OpenImage(this, "Choose a background picture");
+            if (path == null) return;
+            try { slot.ImageFile = ImageService.ImportImage(path, "backgrounds"); }
+            catch (Exception ex) { await Dialogs.Info(this, "Couldn't use that picture", ex.Message); return; }
             Update();
             Preview();
         };
         remove.Click += (_, _) => { slot.ImageFile = null; Update(); Preview(); };
-        slider.ValueChanged += (_, _) => { slot.Opacity = slider.Value; Update(); Preview(); };
+        slider.PropertyChanged += (_, e) =>
+        {
+            if (e.Property != RangeBase.ValueProperty) return;
+            slot.Opacity = slider.Value;
+            Update();
+            Preview();
+        };
         fit.SelectionChanged += (_, _) =>
         {
             if (fit.SelectedIndex >= 0) slot.Stretch = fitOptions[fit.SelectedIndex].Item1;
@@ -225,19 +261,22 @@ public partial class AppearanceWindow : Window
         AppearanceManager.Apply(_work);
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private void Save_Click(object? sender, RoutedEventArgs e)
     {
         _closingHandled = true;
-        DialogResult = true;
+        Accepted = true;
+        Close();
     }
 
-    private void Cancel_Click(object sender, RoutedEventArgs e)
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
     {
-        DialogResult = false;
+        Accepted = false;
+        Close();
     }
 
-    private void Window_Closing(object? sender, CancelEventArgs e)
+    private void Window_Closing(object? sender, WindowClosingEventArgs e)
     {
+        _closed = true;
         if (_closingHandled) return;
         AppearanceManager.Apply(_original);
     }

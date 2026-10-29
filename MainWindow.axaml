@@ -1,0 +1,120 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:SavefileManager.Models"
+        x:Class="SavefileManager.MainWindow"
+        Icon="avares://SavefileManager/Assets/app.png"
+        Title="Savefile Manager" Width="780" Height="580" MinWidth="600" MinHeight="440"
+        Opened="Window_Opened" Activated="Window_Activated">
+
+    <Window.Resources>
+        <!-- How a file / folder row looks in both lists -->
+        <TreeDataTemplate x:Key="FileNodeTemplate" DataType="models:FileNode" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" Background="Transparent" ToolTip.Tip="{Binding FullPath}">
+                <Grid Width="22" Height="20" Margin="0,0,6,0">
+                    <TextBlock Text="{Binding Icon}" FontFamily="Segoe UI Emoji, Noto Color Emoji, Apple Color Emoji"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding !HasCustomIcon}"/>
+                    <Image Source="{Binding CustomIcon}" Width="20" Height="20" Stretch="Uniform"
+                           RenderOptions.BitmapInterpolationMode="HighQuality"
+                           IsVisible="{Binding HasCustomIcon}"/>
+                </Grid>
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </TreeDataTemplate>
+    </Window.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+        <!-- ================= Menu bar ================= -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="Options">
+                <MenuItem Header="Add" Click="AddProfile_Click"/>
+                <MenuItem x:Name="EditMenu" Header="Edit" Click="EditProfile_Click"/>
+                <MenuItem x:Name="RemoveMenu" Header="Remove" Click="RemoveProfile_Click"/>
+                <Separator/>
+                <MenuItem x:Name="FixPathsMenu" Header="Set folders for this PC..." Click="FixPaths_Click"/>
+                <Separator/>
+                <MenuItem x:Name="SetProfileIconMenu" Header="Set profile icon..." Click="SetProfileIcon_Click"/>
+                <MenuItem x:Name="RemoveProfileIconMenu" Header="Remove profile icon" Click="RemoveProfileIcon_Click"/>
+                <Separator/>
+                <MenuItem Header="Import Green-Bat settings.json..." Click="ImportLegacy_Click"/>
+                <MenuItem Header="Open backups folder" Click="OpenBackups_Click"/>
+                <MenuItem Header="Clean backups older than 7 days..." Click="CleanBackups_Click"/>
+            </MenuItem>
+            <MenuItem x:Name="ThemesMenu" Header="Themes"/>
+        </Menu>
+
+        <!-- ================= Header ================= -->
+        <Grid Grid.Row="1" Margin="16,12,16,4" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+
+            <TextBlock x:Name="TitleText" FontFamily="{DynamicResource FontTitle}" FontSize="17"
+                       FontWeight="Bold" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Profiles:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox x:Name="ProfileCombo" Width="240" SelectionChanged="ProfileCombo_SelectionChanged">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="{Binding Icon}" Width="20" Height="20" Margin="0,0,8,0"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                       IsVisible="{Binding HasIcon}"/>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <TextBlock x:Name="PersonalPathText" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,2"
+                       Classes="PathLabel"
+                       ToolTip.Tip="Double-click to open this folder"
+                       DoubleTapped="PersonalPath_DoubleTapped"/>
+            <TextBlock x:Name="GamePathText" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,2"
+                       Classes="PathLabel"
+                       ToolTip.Tip="Double-click to open this folder"
+                       DoubleTapped="GamePath_DoubleTapped"/>
+        </Grid>
+
+        <!-- ================= Folder-missing banner (profile is kept, just inaccessible) ================= -->
+        <Border x:Name="MissingBanner" Grid.Row="2" Margin="16,6,16,0" Padding="10,8" IsVisible="False"
+                CornerRadius="3" BorderThickness="1"
+                Background="{DynamicResource TreeBackgroundBrush}"
+                BorderBrush="{DynamicResource UnavailableTextBrush}">
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right" Content="Set folders for this PC..." Margin="12,0,0,0"
+                        VerticalAlignment="Center" Click="FixPaths_Click"/>
+                <TextBlock x:Name="MissingBannerText" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Foreground="{DynamicResource UnavailableTextBrush}"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ================= Lists ================= -->
+        <Grid Grid.Row="3" Margin="16,10,16,16" ColumnDefinitions="*,Auto,*" RowDefinitions="Auto,*">
+
+            <TextBlock Grid.Column="0" Text="Your saves" FontWeight="SemiBold" Margin="2,0,0,4"/>
+            <TextBlock Grid.Column="2" Text="Game saves" FontWeight="SemiBold" Margin="2,0,0,4"/>
+
+            <!-- list colour + optional picture are drawn behind the (transparent) tree -->
+            <Grid Grid.Row="1" Grid.Column="0">
+                <Border Background="{DynamicResource TreeBackgroundBrush}"/>
+                <Border Background="{DynamicResource PersonalImageBrush}" IsHitTestVisible="False"/>
+                <TreeView x:Name="PersonalTree" ItemTemplate="{StaticResource FileNodeTemplate}"/>
+            </Grid>
+
+            <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center">
+                <Button x:Name="ReplaceButton" Content="=&gt;" Classes="Arrow"
+                        ToolTip.Tip="Replace the selected game save with the selected save from your list"
+                        Click="Replace_Click"/>
+                <Button x:Name="BackupButton" Content="&lt;=" Classes="Arrow"
+                        ToolTip.Tip="Back up the selected game save into your list (into the selected folder, or the main folder if nothing is selected)"
+                        Click="Backup_Click"/>
+            </StackPanel>
+
+            <Grid Grid.Row="1" Grid.Column="2">
+                <Border Background="{DynamicResource TreeBackgroundBrush}"/>
+                <Border Background="{DynamicResource GameImageBrush}" IsHitTestVisible="False"/>
+                <TreeView x:Name="GameTree" ItemTemplate="{StaticResource FileNodeTemplate}"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

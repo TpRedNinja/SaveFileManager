@@ -1,3 +1,5 @@
+using SavefileManager.Themes;
+
 namespace SavefileManager.Models;
 
 /// <summary>UI state that is remembered separately for each computer.</summary>
@@ -12,15 +14,15 @@ public class MachineState
 
 public class AppSettings
 {
-    public List<Profile> Profiles { get; set; } = new();
+    public List<Profile> Profiles { get; set; } = [];
 
     /// <summary>
     /// Ids of profiles the user explicitly removed. Only used so that a removed profile does not
     /// come back when another computer saves an older copy of the settings file.
     /// </summary>
-    public List<string> RemovedProfileIds { get; set; } = new();
+    public List<string> RemovedProfileIds { get; set; } = [];
 
-    public Dictionary<string, MachineState> Machines { get; set; } = new();
+    public Dictionary<string, MachineState> Machines { get; set; } = [];
 
     /// <summary>"Dark", "Dark (Alt)", "Classic", "Solarized" or "Custom".</summary>
     public string Theme { get; set; } = "Dark";

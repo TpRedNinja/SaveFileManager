@@ -1,22 +1,35 @@
-# Savefile Manager (WPF / C#)
+# Savefile Manager (Avalonia / C#, Windows + Linux)
 
-A C# + WPF rewrite of [Green-Bat/Savefile-Manager](https://github.com/Green-Bat/Savefile-Manager).
+A C# + Avalonia rewrite of [Green-Bat/Savefile-Manager](https://github.com/Green-Bat/Savefile-Manager).
 Back up and replace save files/folders for any game using profiles.
 
 ## Build & run
 
-Requires the .NET 8 SDK (or newer) on Windows.
+One project, one UI, runs on Windows and Linux. Requires the .NET 8 SDK (or newer).
 
 ```
 dotnet run -c Release
-# or publish a single exe:
+
+# Windows exe
 dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
+
+# Linux binary
+dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
 Or open the folder in Visual Studio 2022 and press F5.
 
-Settings, logs and backups live in a `config` folder next to the exe (falls back to
-`%AppData%\SavefileManager\config` if that folder is read-only).
+Settings, logs and backups live in a `config` folder next to the program (falls back to
+`%AppData%\SavefileManager\config` on Windows or `~/.config/SavefileManager` on Linux if that folder is read-only).
+
+### Linux notes
+
+- Folder paths are case-sensitive there. Profiles keep separate folder paths per computer, so a
+  Windows PC and a Linux PC can share the same `config` folder.
+- Windows 11 title-bar colors are Windows-only; on Linux the title bar follows your desktop.
+- Fonts you add are installed for your user (`~/.local/share/fonts`) and need a restart of the program
+  to show up. "Segoe UI" is not on Linux, so the default falls back to your system font until you pick one.
+- Folders open with `xdg-open`.
 
 ## Features (same as the original)
 
@@ -24,7 +37,7 @@ Settings, logs and backups live in a `config` folder next to the exe (falls back
 - `=>` replace the selected game save with your selected save (the game file is backed up first)
 - `<=` back up the selected game save into your list (into the selected folder, or the main folder if nothing is selected)
 - Right-click: Rename / Delete (a copy is kept in `config/backups/Deleted`) / Create Folder
-- Double-click a path to open it in Explorer
+- Double-click a path to open it in your file manager
 - Batman: Arkham Knight handling (all three slots replaced; most recent slot backed up)
 - Themes: Dark, Dark (Alt), Classic, Solarized, plus a fully editable **Custom** theme
 
@@ -54,13 +67,13 @@ and Import/Export to share a theme as a `.json` file.
 - Rename never deletes a non-empty folder to make room; overwriting a file keeps a safety copy.
 - Lists refresh with a file system watcher instead of polling every second.
 - No admin elevation or update check at startup.
-- "Dark (Alt)" has the same colors as "Dark" but a lighter button/list border (the original differs only in Tk's base widget style, which has no WPF equivalent).
+- "Dark (Alt)" has the same colors as "Dark" but a lighter button/list border (the original differs only in Tk's base widget style, which has no direct equivalent here).
 
 ## Fonts, backgrounds and icons
 
 * **Themes > Fonts & backgrounds...** - pick one font for all text, or choose a separate font for
   each part (title, profile selector, paths, file lists, buttons, menus, tooltips). "Add font file..."
-  loads any downloaded .ttf / .otf; a copy goes to `config/fonts`, nothing is installed into Windows.
+  loads any downloaded .ttf / .otf; a copy goes to `config/fonts`, it is installed for your user account only (not system-wide); a newly added font appears after a restart.
   You can also set a picture behind each file list, with opacity and fit.
 * **File icons** - right-click a file or folder > *Set icon...* / *Remove icon*.
 * **Profile picture** - Options > *Set profile icon...* / *Remove profile icon*; shown in the profile selector.

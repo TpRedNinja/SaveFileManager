@@ -1,16 +1,16 @@
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Windows.Media;
+using Avalonia.Media;
 using SavefileManager.Helpers;
-
-namespace SavefileManager.Models;
+namespace SavefileManager.Themes;
 
 /// <summary>One colour slot that can be changed in the custom theme editor.</summary>
 public record ThemeKey(string Key, string Label, string Group);
 
 public static class ThemeKeys
 {
-    public static readonly IReadOnlyList<ThemeKey> All = new List<ThemeKey>
-    {
+    public static readonly IReadOnlyList<ThemeKey> All =
+    [
         // General
         new("WindowBackground", "Window background", "General"),
         new("PanelBackground", "Header / panel background", "General"),
@@ -82,7 +82,7 @@ public static class ThemeKeys
         new("TooltipBackground", "Tooltip background", "Tooltips"),
         new("TooltipText", "Tooltip text", "Tooltips"),
         new("TooltipBorder", "Tooltip border", "Tooltips"),
-    };
+    ];
 }
 
 public class ThemeDefinition
@@ -90,7 +90,7 @@ public class ThemeDefinition
     public string Name { get; set; } = "Custom";
 
     /// <summary>Key (see <see cref="ThemeKeys"/>) to "#RRGGBB".</summary>
-    public Dictionary<string, string> Colors { get; set; } = new();
+    public Dictionary<string, string> Colors { get; set; } = [];
 
     public Color Get(string key) =>
         Colors.TryGetValue(key, out var hex)
@@ -112,6 +112,7 @@ public class ThemeDefinition
     }
 
     /// <summary>Makes sure every slot has a value (used when loading older or hand-edited files).</summary>
+    [SuppressMessage("Causes an error", "CA1854")]
     public void FillMissing(ThemeDefinition fallback)
     {
         foreach (var k in ThemeKeys.All)

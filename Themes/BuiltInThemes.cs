@@ -1,7 +1,6 @@
-using System.Windows.Media;
+using Avalonia.Media;
 using SavefileManager.Helpers;
-
-namespace SavefileManager.Models;
+namespace SavefileManager.Themes;
 
 /// <summary>
 /// The four themes from the original Savefile Manager, using the same base colours
@@ -9,7 +8,7 @@ namespace SavefileManager.Models;
 /// </summary>
 public static class BuiltInThemes
 {
-    public static readonly string[] Names = { "Dark", "Dark (Alt)", "Classic", "Solarized" };
+    public static readonly string[] Names = ["Dark", "Dark (Alt)", "Classic", "Solarized"];
 
     public static ThemeDefinition Create(string name, string? newName = null)
     {

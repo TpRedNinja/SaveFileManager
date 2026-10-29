@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SavefileManager.Views.ProfileEditWindow"
+        Width="520" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid Margin="20" ColumnDefinitions="*,Auto"
+          RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+
+        <TextBlock x:Name="IntroText" Grid.ColumnSpan="2" TextWrapping="Wrap" Margin="0,0,0,12"
+                   IsVisible="False" Foreground="{DynamicResource UnavailableTextBrush}"/>
+
+        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Profile name:" Margin="0,0,0,4"/>
+        <TextBox x:Name="NameBox" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,0,12"/>
+
+        <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="Personal saves folder (your own backups):" Margin="0,0,0,4"/>
+        <TextBox x:Name="PersonalBox" Grid.Row="4" Margin="0,0,8,12"/>
+        <Button Grid.Row="4" Grid.Column="1" Content="Browse..." Margin="0,0,0,12" VerticalAlignment="Top" Click="BrowsePersonal_Click"/>
+
+        <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Text="Game's saves folder:" Margin="0,0,0,4"/>
+        <TextBox x:Name="GameBox" Grid.Row="6" Margin="0,0,8,12"/>
+        <Button Grid.Row="6" Grid.Column="1" Content="Browse..." Margin="0,0,0,12" VerticalAlignment="Top" Click="BrowseGame_Click"/>
+
+        <TextBlock Grid.Row="7" Grid.ColumnSpan="2" Margin="0,0,0,4" TextWrapping="Wrap"
+                   Text="File extension (e.g. .sgd, .save - use * for folders or files with no extension):"/>
+        <TextBox x:Name="ExtBox" Grid.Row="8" Grid.ColumnSpan="2" Margin="0,0,0,12"/>
+
+        <TextBlock x:Name="NoteText" Grid.Row="9" Grid.ColumnSpan="2" TextWrapping="Wrap" Margin="0,0,0,16"
+                   Opacity="0.7" FontSize="11"/>
+
+        <StackPanel Grid.Row="10" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="OK" MinWidth="84" Margin="0,0,8,0" Click="Ok_Click"/>
+            <Button Content="Cancel" MinWidth="84" Click="Cancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

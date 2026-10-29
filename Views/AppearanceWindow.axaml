@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SavefileManager.Views.AppearanceWindow"
+        Title="Fonts &amp; backgrounds" Width="560" Height="720" MinWidth="480" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid Margin="16" RowDefinitions="*,Auto">
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,0,14,0">
+
+                <TextBlock Text="Fonts" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <RadioButton x:Name="AllRadio" Content="Use one font for all text" GroupName="mode" Margin="0,2,0,2"/>
+                <RadioButton x:Name="EachRadio" Content="Choose a separate font for each part" GroupName="mode" Margin="0,2,0,8"/>
+
+                <DockPanel Margin="0,0,0,6">
+                    <TextBlock Text="Font:" Width="150" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="GlobalCombo" HorizontalAlignment="Stretch"/>
+                </DockPanel>
+                <StackPanel x:Name="EachPanel" Margin="0,0,0,6"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <Button Content="Add font file..." Click="AddFont_Click"
+                            ToolTip.Tip="Pick a downloaded .ttf / .otf file. A copy is kept in the Savefile Manager's config folder."/>
+                </StackPanel>
+                <TextBlock x:Name="FontNote" Opacity="0.7" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+                <Separator Margin="0,18,0,12"/>
+
+                <TextBlock Text="List backgrounds" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <StackPanel x:Name="BackgroundsPanel"/>
+                <TextBlock Opacity="0.7" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"
+                           Text="Pictures are copied into the config/images folder. Lower the opacity if the text is hard to read."/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Save" MinWidth="90" Margin="0,0,8,0" Click="Save_Click"/>
+            <Button Content="Cancel" MinWidth="90" Click="Cancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

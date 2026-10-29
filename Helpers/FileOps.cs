@@ -1,18 +1,51 @@
 using System.IO;
-using System.Runtime.InteropServices;
 
 namespace SavefileManager.Helpers;
 
 public static class FileOps
 {
-    // Sorts like Windows Explorer (file2 before file10).
-    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
-    private static extern int StrCmpLogicalW(string x, string y);
+    /// <summary>
+    /// Windows file systems ignore letter case in paths; Linux file systems do not.
+    /// Use this whenever two paths are compared.
+    /// </summary>
+    public static StringComparison PathComparison =>
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
+    public static bool SamePath(string a, string b) => string.Equals(a, b, PathComparison);
+
+    /// <summary>Sorts like a file manager (file2 before file10), on every platform.</summary>
     public sealed class NaturalComparer : IComparer<string>
     {
         public static readonly NaturalComparer Instance = new();
-        public int Compare(string? x, string? y) => StrCmpLogicalW(x ?? "", y ?? "");
+
+        public int Compare(string? x, string? y)
+        {
+            x ??= ""; y ??= "";
+            int i = 0, j = 0;
+            while (i < x.Length && j < y.Length)
+            {
+                if (char.IsDigit(x[i]) && char.IsDigit(y[j]))
+                {
+                    int si = i, sj = j;
+                    while (i < x.Length && char.IsDigit(x[i])) i++;
+                    while (j < y.Length && char.IsDigit(y[j])) j++;
+                    var a = x.AsSpan(si, i - si).TrimStart('0');
+                    var b = y.AsSpan(sj, j - sj).TrimStart('0');
+                    if (a.Length != b.Length) return a.Length < b.Length ? -1 : 1;   // more digits = bigger number
+                    int c = a.CompareTo(b, StringComparison.Ordinal);
+                    if (c != 0) return c;
+                }
+                else
+                {
+                    int c = char.ToUpperInvariant(x[i]).CompareTo(char.ToUpperInvariant(y[j]));
+                    if (c != 0) return c;
+                    i++; j++;
+                }
+            }
+            if (i < x.Length) return 1;
+            if (j < y.Length) return -1;
+            return string.Compare(x, y, StringComparison.Ordinal);   // identical except case/leading zeros: stable order
+        }
     }
 
     /// <summary>Most common file extension in a folder (or the extension of a file).</summary>
