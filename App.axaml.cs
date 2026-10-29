@@ -24,7 +24,7 @@ public partial class App : Application
 
             ImageService.Init(Store.ConfigDir);
             FontService.Init(Path.Combine(Store.ConfigDir, "fonts"));
-            AppearanceManager.Apply(Store.Data.Appearance);
+            AppearanceManager.ApplyFontsOnly(Store.Data.Appearance);   // pictures are loaded after the window is up
             ThemeManager.Apply(ThemeManager.Resolve(Store.Data));
 
             desktop.MainWindow = new MainWindow();

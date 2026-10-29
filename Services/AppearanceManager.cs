@@ -11,6 +11,24 @@ public static class AppearanceManager
     public static void Apply(AppearanceSettings a)
     {
         FontService.Apply(a.Fonts);
+        ApplyBackgrounds(a);
+    }
+
+    /// <summary>
+    /// Fonts now, pictures later: decoding big pictures is the slow part, so at startup the lists get
+    /// an empty background first and <see cref="ApplyBackgrounds"/> fills them in once the window is up.
+    /// </summary>
+    public static void ApplyFontsOnly(AppearanceSettings a)
+    {
+        FontService.Apply(a.Fonts);
+        var res = Application.Current?.Resources;
+        if (res == null) return;
+        res["PersonalImageBrush"] = Brushes.Transparent;
+        res["GameImageBrush"] = Brushes.Transparent;
+    }
+
+    public static void ApplyBackgrounds(AppearanceSettings a)
+    {
         SetBackground("PersonalImageBrush", a.PersonalBackground);
         SetBackground("GameImageBrush", a.GameBackground);
     }

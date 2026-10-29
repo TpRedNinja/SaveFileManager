@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using SavefileManager.Models;
 using SavefileManager.Services;
 
@@ -16,7 +17,7 @@ public partial class AppearanceWindow : Window
     private readonly AppearanceSettings _work = new();
     private readonly Dictionary<string, ComboBox> _elementCombos = [];
     private bool _loading = true;
-    private bool _closingHandled;
+    private bool _closingHandled, _closed;
 
     public bool Accepted { get; private set; }
     public AppearanceSettings Result => _work;
@@ -35,8 +36,18 @@ public partial class AppearanceWindow : Window
         FontNote.Text = "Added fonts are copied into the config/fonts folder and installed for your user account only " +
                         "(nothing system-wide). A newly added font shows up in the lists after you restart the program.";
 
+        Closing += Window_Closing;
+        // Show the window first, then build the (many) font lists, so it never opens as an empty frame.
+        Opened += async (_, _) => await FillWhenShown();
+    }
+
+    private async Task FillWhenShown()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
         BuildFontControls();
         BuildBackgroundControls();
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        if (_closed) return;
         RefreshFontLists();
 
         AllRadio.IsChecked = !_work.Fonts.PerElement;
@@ -45,7 +56,6 @@ public partial class AppearanceWindow : Window
         EachRadio.IsCheckedChanged += Mode_Changed;
         GlobalCombo.SelectionChanged += GlobalCombo_Changed;
         UpdateModeUi();
-        Closing += Window_Closing;
         _loading = false;
     }
 
@@ -266,6 +276,7 @@ public partial class AppearanceWindow : Window
 
     private void Window_Closing(object? sender, WindowClosingEventArgs e)
     {
+        _closed = true;
         if (_closingHandled) return;
         AppearanceManager.Apply(_original);
     }

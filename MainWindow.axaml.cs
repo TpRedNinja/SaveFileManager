@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using SavefileManager.Helpers;
 using SavefileManager.Models;
 using SavefileManager.Services;
@@ -55,6 +56,11 @@ public partial class MainWindow : Window
         if (_started) return;
         try
         {
+            // let the window draw its first frame before any heavy work (pictures, folder scans)
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            AppearanceManager.ApplyBackgrounds(Store.Data.Appearance);
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+
             if (Store.LoadWarning != null)
                 await Dialogs.Info(this, "Settings File", Store.LoadWarning);
 
